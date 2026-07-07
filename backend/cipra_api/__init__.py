@@ -1,0 +1,1 @@
+"""CIPRA Django project package."""
