@@ -1,4 +1,4 @@
-.PHONY: help install lint test build clean format
+.PHONY: help install lint test build clean format docker-build docker-up docker-down
 
 help: ## Show available commands
 	@echo "Available commands:"
@@ -19,6 +19,14 @@ test: ## Run the test suite
 
 build: ## Build the backend Docker image
 	docker compose build
+
+docker-build: build  ## Build the backend Docker image (alias for build)
+
+docker-up: ## Start the backend with Docker Compose
+	docker compose up -d
+
+docker-down: ## Stop and remove Docker Compose containers
+	docker compose down
 
 clean: ## Remove generated cache directories
 	find . -type d -name "__pycache__" -exec rm -rf {} +

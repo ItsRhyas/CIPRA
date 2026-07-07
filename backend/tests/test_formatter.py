@@ -62,7 +62,7 @@ def test_format_gcode_single_point_path() -> None:
     paths: list[list[tuple[float, float]]] = [[(25.0, 75.0)]]
     result = format_gcode(paths)
 
-    assert result.gcode == "G21 G90\nG0 X25.00 Y75.00\nM3\nM5\nM5\n"
+    assert result.gcode == "G21 G90\nG0 X25.00 Y75.00\nM3\nM5\n"
     assert result.warnings == []
 
 
