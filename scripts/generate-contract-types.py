@@ -19,6 +19,12 @@ PRIMITIVE_TYPES = {
     "boolean": "bool",
 }
 
+# Types that are maintained in dedicated backend modules rather than generated.
+# Format: class name -> (import line, absolute module path for type checking).
+EXTERNAL_TYPES = {
+    "ScaraConfig": ("from gcode.config import ScaraConfig", "backend.gcode.config.ScaraConfig"),
+}
+
 PIPELINE_TYPES = '''
 
 
@@ -137,7 +143,7 @@ def _emit_class(name: str, schema: dict[str, Any]) -> str:
 
 def generate(schema: dict[str, Any]) -> str:
     """Return the full types.py source for the given schema."""
-    parts = [
+    imports = [
         '"""Shared pipeline and API contract types."""',
         "",
         "from __future__ import annotations",
@@ -147,7 +153,20 @@ def generate(schema: dict[str, Any]) -> str:
     ]
 
     definitions = schema.get("$defs", {})
+    external_imports = []
     for name in sorted(definitions):
+        if name in EXTERNAL_TYPES:
+            external_imports.append(EXTERNAL_TYPES[name][0])
+            continue
+
+    if external_imports:
+        parts = imports + [""] + external_imports
+    else:
+        parts = imports
+
+    for name in sorted(definitions):
+        if name in EXTERNAL_TYPES:
+            continue
         parts.append(_emit_class(name, definitions[name]))
 
     parts.append(PIPELINE_TYPES)

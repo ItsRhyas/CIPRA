@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from gcode.config import ScaraConfig
+
 
 @dataclass
 class ConvertParams:
@@ -53,21 +55,6 @@ class ErrorResponse:
     error: str
     detail: str | None = None
     field_errors: dict[str, Any] | None = None
-
-
-@dataclass
-class ScaraConfig:
-    """
-    Physical SCARA machine configuration. Overrides are optional; defaults match an
-    A4 drawing area.
-    """
-
-    work_area_w_mm: float = 210.0
-    work_area_h_mm: float = 297.0
-    travel_speed: float = 3000.0
-    draw_speed: float = 1500.0
-    tool_offset_mm: float = 0.0
-    origin: str = 'bottom-left'
 
 
 
