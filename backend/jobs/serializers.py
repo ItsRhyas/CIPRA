@@ -71,8 +71,8 @@ class ConvertRequestSerializer(serializers.Serializer):
 
     def validate_variant(self, value: str) -> str:
         """Validate the conversion variant."""
-        if value not in {"fast", "detailed"}:
+        if value not in {"fast", "detailed", "balanced"}:
             raise serializers.ValidationError(
-                "variant must be one of: fast, detailed."
+                "variant must be one of: fast, detailed, balanced."
             )
         return value

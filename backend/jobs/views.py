@@ -33,12 +33,13 @@ class ConvertView(APIView):
         image_file = serializer.validated_data["image"]
         params = serializer.validated_data["params"]
         variant = serializer.validated_data["variant"]
+        params.variant = variant
 
         image_array = _load_image(image_file)
         scara_config = params.scara if params.scara else ScaraConfig()
 
         start = time.perf_counter()
-        pipeline_output = PipelineOrchestrator().run(image_array, scara_config)
+        pipeline_output = PipelineOrchestrator().run(image_array, scara_config, params)
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         paths = _coordinates_to_paths(pipeline_output.coordinates)
