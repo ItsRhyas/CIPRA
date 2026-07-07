@@ -8,6 +8,7 @@ dependencies = [
     "djangorestframework>=3.14",
     "opencv-python-headless>=4.8",
     "numpy>=1.24",
+    "Pillow>=10.0",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +28,7 @@ packages = ["."]
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-q"
+DJANGO_SETTINGS_MODULE = "cipra_api.settings"
 
 [tool.ruff]
 target-version = "py311"

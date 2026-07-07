@@ -79,5 +79,4 @@ def format_gcode(
 
         lines.append("M5")
 
-    lines.append("M5")
     return FormatResult(gcode="\n".join(lines) + "\n", warnings=warnings)
