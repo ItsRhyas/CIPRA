@@ -1,4 +1,4 @@
-"""Stage 2: edge detection stub."""
+"""Stage 2: edge detection with Canny."""
 
 from __future__ import annotations
 
@@ -12,20 +12,26 @@ if TYPE_CHECKING:
 
 def edges(image: NDArray) -> StageResult:
     """
-    Detect edges in a preprocessed image.
+    Detect edges using the Canny algorithm.
 
-    This is a stub implementation that passes the input through unchanged and
-    emits a warning. Real Canny edge detection will replace this in a future
-    slice.
+    Uses OpenCV's ``cv2.Canny`` with low threshold 50 and high threshold 150.
+    If OpenCV is unavailable, the input is returned unchanged and an
+    ``opencv_missing`` warning is emitted so callers can degrade gracefully.
     """
-    return StageResult(
-        data=image,
-        warnings=[
-            Warning(
-                message="edges: not yet implemented — returning input unmodified",
-                stage="edges",
-                code="stub",
-            )
-        ],
-        stage_name="edges",
-    )
+    try:
+        import cv2
+    except ImportError:  # pragma: no cover - exercised by graceful-degradation test
+        return StageResult(
+            data=image,
+            warnings=[
+                Warning(
+                    message="OpenCV is not available; edges returned input unchanged.",
+                    stage="edges",
+                    code="opencv_missing",
+                )
+            ],
+            stage_name="edges",
+        )
+
+    edge_image = cv2.Canny(image, 50, 150)
+    return StageResult(data=edge_image, warnings=[], stage_name="edges")

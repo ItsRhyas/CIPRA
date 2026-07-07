@@ -117,12 +117,12 @@ def test_convert_invalid_variant_returns_400(
 
 
 @pytest.mark.django_db
-def test_convert_stub_warnings_are_returned(
+def test_convert_valid_image_produces_gcode_without_stub_warnings(
     api_client,
     sample_image_bytes,
     convert_params,
 ):
-    """Pipeline stub warnings surface in the response warnings array."""
+    """Real pipeline processing produces G-Code without stub warnings."""
     response = api_client.post(
         "/api/v1/convert/",
         {
@@ -134,6 +134,7 @@ def test_convert_stub_warnings_are_returned(
     )
 
     assert response.status_code == 200
-    warnings = response.json()["warnings"]
-    messages = " ".join(warnings)
-    assert "not yet implemented" in messages
+    data = response.json()
+    assert "gcode" in data
+    assert "M3" in data["gcode"]
+    assert "not yet implemented" not in " ".join(data["warnings"])
