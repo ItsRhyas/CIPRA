@@ -9,7 +9,7 @@ from pipeline.contours import contours
 from pipeline.edges import edges
 from pipeline.preprocess import preprocess
 from pipeline.simplify import simplify
-from pipeline.types import PipelineOutput, StageResult, Warning
+from pipeline.types import ConvertParams, PipelineOutput, StageResult, Warning
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -18,21 +18,31 @@ if TYPE_CHECKING:
 class PipelineOrchestrator:
     """Chain the four vision-pipeline stages and aggregate their outputs."""
 
-    def run(self, image: NDArray, config: ScaraConfig) -> PipelineOutput:
+    def run(
+        self,
+        image: NDArray,
+        config: ScaraConfig,
+        params: ConvertParams | None = None,
+    ) -> PipelineOutput:
         """
         Run preprocess → edges → contours → simplify and return coordinates.
 
         Args:
             image: Input image as a NumPy ndarray.
-            config: SCARA machine configuration (reserved for future stages).
+            config: SCARA machine configuration for pixel-to-millimeter scaling.
+            params: Optional conversion parameters. When omitted, balanced defaults
+                are used.
 
         Returns:
             PipelineOutput with ordered coordinates and aggregated warnings.
         """
+        if params is None:
+            params = ConvertParams()
+
         warnings: list[Warning] = []
         stages_run: list[str] = []
 
-        result: StageResult = preprocess(image)
+        result: StageResult = preprocess(image, params.variant)
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "preprocess")
 
@@ -44,7 +54,9 @@ class PipelineOrchestrator:
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "contours")
 
-        result = simplify(result.data)
+        result = simplify(
+            result.data, config, params.simplify_tolerance, image.shape
+        )
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "simplify")
 

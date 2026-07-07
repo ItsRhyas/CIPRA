@@ -14,7 +14,8 @@ class ConvertParams:
 
     scale: float = 1.0
     threshold: int = 127
-    simplify_tolerance: float = 1.0
+    simplify_tolerance: float = 2.0
+    variant: str = "balanced"
     scara: ScaraConfig | None = None
 
 
