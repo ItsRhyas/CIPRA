@@ -48,6 +48,36 @@ make docker-up
 
 The backend service listens on port `8000` once the full Django project is added.
 
+## Frontend
+
+The Next.js 14 frontend lives in `frontend/` and provides the image-to-GCode converter UI.
+
+Install dependencies:
+
+```bash
+cd frontend && npm install
+```
+
+Start the development server:
+
+```bash
+make frontend-dev
+```
+
+The app will be available at [http://localhost:3000](http://localhost:3000). API requests to `/api/v1/*` are proxied to the Django backend on `localhost:8000` via `next.config.mjs` rewrites, so the backend must be running for conversion to work.
+
+Build for production:
+
+```bash
+make frontend-build
+```
+
+Lint the frontend source:
+
+```bash
+make frontend-lint
+```
+
 ## Architecture overview
 
 1. A client uploads an image plus processing parameters to `POST /api/v1/convert/`.
