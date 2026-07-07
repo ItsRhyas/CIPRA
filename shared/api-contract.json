@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema#",
+  "$id": "https://cipra.local/schemas/api-contract.json",
+  "title": "CIPRA Convert API Contract",
+  "description": "Request/response contract for POST /api/v1/convert/ between the Next.js frontend and the Django backend.",
+  "version": "0.1.0",
+  "$defs": {
+    "ScaraConfig": {
+      "type": "object",
+      "description": "Physical SCARA machine configuration. Overrides are optional; defaults match an A4 drawing area.",
+      "properties": {
+        "work_area_w_mm": {
+          "type": "number",
+          "default": 210.0,
+          "description": "Work area width in millimeters."
+        },
+        "work_area_h_mm": {
+          "type": "number",
+          "default": 297.0,
+          "description": "Work area height in millimeters."
+        },
+        "travel_speed": {
+          "type": "number",
+          "default": 3000.0,
+          "description": "Rapid travel speed (G0) in mm/min."
+        },
+        "draw_speed": {
+          "type": "number",
+          "default": 1500.0,
+          "description": "Drawing speed (G1) in mm/min."
+        },
+        "tool_offset_mm": {
+          "type": "number",
+          "default": 0.0,
+          "description": "Pen/tool offset in millimeters."
+        },
+        "origin": {
+          "type": "string",
+          "default": "bottom-left",
+          "description": "Coordinate origin convention. Requires confirmation from the robotics team."
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConvertParams": {
+      "type": "object",
+      "description": "Processing parameters for the vision pipeline.",
+      "properties": {
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.0,
+          "description": "Output scale factor applied to normalized coordinates."
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "default": 127,
+          "description": "Binarization/Canny threshold."
+        },
+        "simplify_tolerance": {
+          "type": "number",
+          "minimum": 0,
+          "default": 1.0,
+          "description": "Douglas-Peucker epsilon in millimeters."
+        },
+        "scara": {
+          "$ref": "#/$defs/ScaraConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConvertResponseMeta": {
+      "type": "object",
+      "description": "Metadata returned with a successful conversion.",
+      "properties": {
+        "variant": {
+          "type": "string",
+          "enum": ["fast", "detailed"]
+        },
+        "stages_run": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Pipeline stage names executed in order."
+        },
+        "elapsed_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total processing time in milliseconds."
+        }
+      },
+      "required": ["variant", "stages_run", "elapsed_ms"],
+      "additionalProperties": false
+    },
+    "ConvertRequest": {
+      "type": "object",
+      "description": "Logical request body. On the wire this is sent as multipart/form-data with 'image' as a file field and 'params' as a JSON string.",
+      "properties": {
+        "image": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Uploaded PNG/JPEG/WebP image. Base64 in the schema; sent as a file upload over HTTP."
+        },
+        "params": {
+          "$ref": "#/$defs/ConvertParams"
+        },
+        "variant": {
+          "type": "string",
+          "enum": ["fast", "detailed"],
+          "default": "fast",
+          "description": "Conversion quality preset."
+        }
+      },
+      "required": ["image", "params"],
+      "additionalProperties": false
+    },
+    "ConvertResponse": {
+      "type": "object",
+      "description": "Successful conversion response.",
+      "properties": {
+        "gcode": {
+          "type": "string",
+          "description": "Generated G-Code program text."
+        },
+        "meta": {
+          "$ref": "#/$defs/ConvertResponseMeta"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Human-readable warning messages emitted by the pipeline."
+        }
+      },
+      "required": ["gcode", "meta"],
+      "additionalProperties": false
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "description": "Validation or processing error response.",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "field_errors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["error"],
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "request": {
+        "image": "iVBORw0KGgo=",
+        "params": {
+          "scale": 1.0,
+          "threshold": 127,
+          "simplify_tolerance": 1.0
+        },
+        "variant": "fast"
+      },
+      "response": {
+        "gcode": "G21 G90\nG0 X10.00 Y10.00\nM3\nG1 X50.00 Y50.00\nM5\n",
+        "meta": {
+          "variant": "fast",
+          "stages_run": ["preprocess", "edges", "contours", "simplify"],
+          "elapsed_ms": 42.0
+        },
+        "warnings": []
+      }
+    }
+  ]
+}
