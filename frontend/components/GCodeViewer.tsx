@@ -94,6 +94,9 @@ export function GCodeViewer({ gcode }: GCodeViewerProps) {
       }
       ctx.stroke();
     }
+    // Canvas rendering is synchronous — no cleanup needed.
+    // If RAF or timers are added later, cancel them here.
+    return () => {};
   }, [gcode, parsed]);
 
   return (
@@ -103,7 +106,7 @@ export function GCodeViewer({ gcode }: GCodeViewerProps) {
           className="rounded-md bg-yellow-50 px-3 py-2 text-xs text-yellow-800"
           role="status"
         >
-          Some G-Code lines were not recognized and were skipped.
+          Algunas líneas de G-Code no fueron reconocidas y fueron omitidas.
         </div>
       )}
       <div className="rounded-lg border border-gray-200 p-4">
