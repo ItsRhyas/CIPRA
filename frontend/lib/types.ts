@@ -11,8 +11,6 @@ export interface ScaraConfig {
   work_area_h_mm?: number;
   travel_speed?: number;
   draw_speed?: number;
-  tool_offset_mm?: number;
-  origin?: string;
 }
 
 /**

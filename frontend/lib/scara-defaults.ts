@@ -8,6 +8,6 @@ import { ConvertParams, Variant } from '@/lib/types';
 export const DEFAULTS: ConvertParams & { variant: Variant } = {
   scale: 1.0,
   threshold: 128,
-  simplify_tolerance: 2.0,
+  simplify_tolerance: 1.0,
   variant: 'balanced',
 };

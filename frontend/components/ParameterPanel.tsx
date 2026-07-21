@@ -32,7 +32,11 @@ export function ParameterPanel({
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 p-4">
       <div>
-        <label htmlFor="scale" className="block text-sm font-medium text-gray-700">
+        <label
+          htmlFor="scale"
+          className="block text-sm font-medium text-gray-700"
+          title="Multiplica el tamaño final del dibujo. 1.0 = tamaño original."
+        >
           Scale: {params.scale.toFixed(1)}
         </label>
         <input
@@ -52,6 +56,7 @@ export function ParameterPanel({
         <label
           htmlFor="threshold"
           className="block text-sm font-medium text-gray-700"
+          title="Sensibilidad de detección de bordes. Valores más bajos detectan más detalles."
         >
           Threshold: {params.threshold}
         </label>
@@ -72,6 +77,7 @@ export function ParameterPanel({
         <label
           htmlFor="tolerance"
           className="block text-sm font-medium text-gray-700"
+          title="Controla el nivel de detalle de las trayectorias. Valores más altos producen líneas más suaves pero menos detalladas."
         >
           Simplify tolerance: {params.simplify_tolerance.toFixed(1)}
         </label>
@@ -94,6 +100,7 @@ export function ParameterPanel({
         <label
           htmlFor="variant"
           className="block text-sm font-medium text-gray-700"
+          title={'Modo de preprocesado de la imagen. "balanced" usa detección automática de umbral.'}
         >
           Variant
         </label>
