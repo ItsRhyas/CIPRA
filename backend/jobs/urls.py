@@ -7,5 +7,6 @@ from django.urls import path
 from jobs.views import ConvertView
 
 urlpatterns = [
-    path("convert/", ConvertView.as_view(), name="convert"),
+    path("convert", ConvertView.as_view(), name="convert"),
+    path("convert/", ConvertView.as_view(), name="convert-slash"),
 ]

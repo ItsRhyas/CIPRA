@@ -13,6 +13,7 @@ def simplify(
     config: ScaraConfig,
     tolerance: float = 2.0,
     image_shape: tuple[int, ...] = (0, 0),
+    scale: float = 1.0,
 ) -> StageResult:
     """
     Simplify contours with Douglas-Peucker and convert pixels to millimeters.
@@ -24,6 +25,7 @@ def simplify(
     3. Convert pixel coordinates to millimeters using the image dimensions and
        the configured work area.
     4. Flip the Y axis so the origin is at the bottom-left of the work area.
+    5. Multiply millimeter coordinates by ``scale``.
 
     If OpenCV is unavailable, an empty coordinate list and an ``opencv_missing``
     warning are returned.
@@ -83,14 +85,16 @@ def simplify(
 
     ordered_paths = _nn_tsp_order(simplified_paths)
 
-    coordinates: list[tuple[float, float]] = []
+    mm_paths: list[list[tuple[float, float]]] = []
     for path in ordered_paths:
+        mm_path: list[tuple[float, float]] = []
         for px, py in path:
-            mm_x = px * scale_x
-            mm_y = config.work_area_h_mm - (py * scale_y)
-            coordinates.append((mm_x, mm_y))
+            mm_x = px * scale_x * scale
+            mm_y = (config.work_area_h_mm - (py * scale_y)) * scale
+            mm_path.append((mm_x, mm_y))
+        mm_paths.append(mm_path)
 
-    return StageResult(data=coordinates, warnings=[], stage_name="simplify")
+    return StageResult(data=mm_paths, warnings=[], stage_name="simplify")
 
 
 def _centroid(path: list[tuple[float, float]]) -> tuple[float, float]:

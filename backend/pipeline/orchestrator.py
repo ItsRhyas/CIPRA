@@ -46,7 +46,7 @@ class PipelineOrchestrator:
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "preprocess")
 
-        result = edges(result.data)
+        result = edges(result.data, params.threshold)
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "edges")
 
@@ -55,7 +55,11 @@ class PipelineOrchestrator:
         stages_run.append(result.stage_name or "contours")
 
         result = simplify(
-            result.data, config, params.simplify_tolerance, image.shape
+            result.data,
+            config,
+            params.simplify_tolerance,
+            image.shape,
+            params.scale,
         )
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "simplify")
@@ -69,18 +73,19 @@ class PipelineOrchestrator:
         )
 
 
-def _extract_coordinates(data: object) -> list[tuple[float, float]]:
-    """Normalize a simplify stage result into a flat list of (x, y) tuples."""
-    coordinates: list[tuple[float, float]] = []
+def _extract_coordinates(data: object) -> list[list[tuple[float, float]]]:
+    """Normalize a simplify stage result into a nested list of drawing paths."""
+    paths: list[list[tuple[float, float]]] = []
     if not isinstance(data, list):
-        return coordinates
+        return paths
 
     for item in data:
-        if isinstance(item, tuple) and len(item) == 2:
-            coordinates.append((float(item[0]), float(item[1])))
-        elif isinstance(item, list):
+        if isinstance(item, list):
+            path: list[tuple[float, float]] = []
             for point in item:
                 if isinstance(point, tuple) and len(point) == 2:
-                    coordinates.append((float(point[0]), float(point[1])))
+                    path.append((float(point[0]), float(point[1])))
+            if path:
+                paths.append(path)
 
-    return coordinates
+    return paths
