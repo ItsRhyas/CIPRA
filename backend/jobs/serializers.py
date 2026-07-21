@@ -59,7 +59,18 @@ class ConvertRequestSerializer(serializers.Serializer):
 
         try:
             scara_data = data.get("scara") or {}
-            scara = ScaraConfig(**scara_data)
+            known_scara_fields = {
+                "work_area_w_mm",
+                "work_area_h_mm",
+                "travel_speed",
+                "draw_speed",
+            }
+            filtered_scara = {
+                key: value
+                for key, value in scara_data.items()
+                if key in known_scara_fields
+            }
+            scara = ScaraConfig(**filtered_scara)
             return ConvertParams(
                 scale=data.get("scale", 1.0),
                 threshold=data.get("threshold", 127),

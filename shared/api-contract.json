@@ -20,24 +20,14 @@
           "description": "Work area height in millimeters."
         },
         "travel_speed": {
-          "type": "number",
-          "default": 3000.0,
-          "description": "Rapid travel speed (G0) in mm/min."
+          "type": ["number", "null"],
+          "default": null,
+          "description": "Rapid travel speed (G0) in mm/min. Omit to leave F-codes off G0 lines."
         },
         "draw_speed": {
-          "type": "number",
-          "default": 1500.0,
-          "description": "Drawing speed (G1) in mm/min."
-        },
-        "tool_offset_mm": {
-          "type": "number",
-          "default": 0.0,
-          "description": "Pen/tool offset in millimeters."
-        },
-        "origin": {
-          "type": "string",
-          "default": "bottom-left",
-          "description": "Coordinate origin convention. Requires confirmation from the robotics team."
+          "type": ["number", "null"],
+          "default": null,
+          "description": "Drawing speed (G1) in mm/min. Omit to leave F-codes off G1 lines."
         }
       },
       "additionalProperties": false
@@ -50,14 +40,14 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "default": 1.0,
-          "description": "Output scale factor applied to normalized coordinates."
+          "description": "Output coordinate scale factor."
         },
         "threshold": {
           "type": "integer",
           "minimum": 0,
           "maximum": 255,
           "default": 127,
-          "description": "Binarization/Canny threshold."
+          "description": "Canny edge detection low threshold."
         },
         "simplify_tolerance": {
           "type": "number",

@@ -42,8 +42,12 @@ class ConvertView(APIView):
         pipeline_output = PipelineOrchestrator().run(image_array, scara_config, params)
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        paths = _coordinates_to_paths(pipeline_output.coordinates)
-        format_result = format_gcode(paths, scara_config)
+        format_result = format_gcode(
+            pipeline_output.coordinates,
+            scara_config,
+            travel_speed=scara_config.travel_speed,
+            draw_speed=scara_config.draw_speed,
+        )
 
         warnings = [warning.message for warning in pipeline_output.warnings]
         warnings.extend(format_result.warnings)
@@ -82,10 +86,3 @@ def _load_image(image_file: Any) -> np.ndarray:
         raise ValidationError(f"Could not decode image: {exc}") from exc
 
 
-def _coordinates_to_paths(
-    coordinates: list[tuple[float, float]],
-) -> list[list[tuple[float, float]]]:
-    """Normalize a flat coordinate list into a list of drawing paths."""
-    if not coordinates:
-        return []
-    return [coordinates]

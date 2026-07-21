@@ -21,10 +21,8 @@ def test_default_scara_config_a4_defaults() -> None:
 
     assert config.work_area_w_mm == 210.0
     assert config.work_area_h_mm == 297.0
-    assert config.travel_speed == 3000.0
-    assert config.draw_speed == 1500.0
-    assert config.tool_offset_mm == 0.0
-    assert config.origin == "bottom-left"
+    assert config.travel_speed is None
+    assert config.draw_speed is None
 
 
 def test_format_gcode_matches_golden_snapshot() -> None:
@@ -76,3 +74,30 @@ def test_format_gcode_clamps_out_of_area_coordinates() -> None:
     assert "clipped to work area maximum" in result.warnings[1]
     assert "G0 X0.00 Y50.00" in result.gcode
     assert "G1 X200.00 Y10.00" in result.gcode
+
+
+def test_format_gcode_emits_f_codes_when_speeds_provided() -> None:
+    """F-codes are appended to G0 and G1 lines when speeds are set."""
+    paths: list[list[tuple[float, float]]] = [
+        [(10.0, 10.0), (50.0, 50.0)],
+        [(60.0, 60.0), (70.0, 70.0)],
+    ]
+    result = format_gcode(
+        paths,
+        travel_speed=3000.0,
+        draw_speed=1500.0,
+    )
+
+    assert "G0 X10.00 Y10.00 F3000.00" in result.gcode
+    assert "G1 X50.00 Y50.00 F1500.00" in result.gcode
+    assert "G0 X60.00 Y60.00 F3000.00" in result.gcode
+    assert "G1 X70.00 Y70.00 F1500.00" in result.gcode
+
+
+def test_format_gcode_omits_f_codes_when_speeds_none() -> None:
+    """No F-codes appear when speeds default to None."""
+    paths: list[list[tuple[float, float]]] = [[(10.0, 10.0), (50.0, 50.0)]]
+    result = format_gcode(paths)
+
+    assert "F" not in result.gcode
+    assert result.gcode == _load_gcode("simple_path.gcode")
