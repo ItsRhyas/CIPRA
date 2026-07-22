@@ -72,8 +72,11 @@ def simplify(
         )
 
     image_h, image_w = image_shape[0], image_shape[1]
-    scale_x = config.work_area_w_mm / image_w
-    scale_y = config.work_area_h_mm / image_h
+    fit = min(config.work_area_w_mm / image_w, config.work_area_h_mm / image_h)
+    draw_w_mm = image_w * fit
+    draw_h_mm = image_h * fit
+    offset_x_mm = (config.work_area_w_mm - draw_w_mm) / 2.0
+    offset_y_mm = (config.work_area_h_mm - draw_h_mm) / 2.0
 
     simplified_paths: list[list[tuple[float, float]]] = []
     for path in contours:
@@ -89,8 +92,8 @@ def simplify(
     for path in ordered_paths:
         mm_path: list[tuple[float, float]] = []
         for px, py in path:
-            mm_x = px * scale_x * scale
-            mm_y = (config.work_area_h_mm - (py * scale_y)) * scale
+            mm_x = (px * fit + offset_x_mm) * scale
+            mm_y = (config.work_area_h_mm - offset_y_mm - (py * fit)) * scale
             mm_path.append((mm_x, mm_y))
         mm_paths.append(mm_path)
 

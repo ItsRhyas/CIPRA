@@ -5,13 +5,15 @@ import { parseGCode, ParsedGCode } from '@/lib/gcode-parser';
 
 export interface GCodeViewerProps {
   gcode: string | null;
+  workAreaW?: number;
+  workAreaH?: number;
 }
 
-const CANVAS_WIDTH = 560;
-const CANVAS_HEIGHT = 792;
-const WORK_AREA_W_MM = 210;
-const WORK_AREA_H_MM = 297;
+const CONTAINER_WIDTH = 560;
+const CONTAINER_HEIGHT = 792;
 const PADDING_PX = 16;
+const DEFAULT_WORK_AREA_W_MM = 210;
+const DEFAULT_WORK_AREA_H_MM = 297;
 
 /**
  * Render parsed G-Code on a native canvas.
@@ -21,12 +23,38 @@ const PADDING_PX = 16;
  * so G-Code coordinates (origin bottom-left) map correctly to canvas
  * coordinates (origin top-left).
  */
-export function GCodeViewer({ gcode }: GCodeViewerProps) {
+export function GCodeViewer({
+  gcode,
+  workAreaW = DEFAULT_WORK_AREA_W_MM,
+  workAreaH = DEFAULT_WORK_AREA_H_MM,
+}: GCodeViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const parsed = useMemo<ParsedGCode | null>(
     () => (gcode ? parseGCode(gcode) : null),
     [gcode]
   );
+
+  let effectiveW = workAreaW;
+  let effectiveH = workAreaH;
+  if (!Number.isFinite(effectiveW) || effectiveW <= 0) {
+    console.warn(
+      `GCodeViewer: invalid workAreaW (${workAreaW}), falling back to A4 (${DEFAULT_WORK_AREA_W_MM}).`
+    );
+    effectiveW = DEFAULT_WORK_AREA_W_MM;
+  }
+  if (!Number.isFinite(effectiveH) || effectiveH <= 0) {
+    console.warn(
+      `GCodeViewer: invalid workAreaH (${workAreaH}), falling back to A4 (${DEFAULT_WORK_AREA_H_MM}).`
+    );
+    effectiveH = DEFAULT_WORK_AREA_H_MM;
+  }
+
+  const canvasScale = Math.min(
+    CONTAINER_WIDTH / effectiveW,
+    CONTAINER_HEIGHT / effectiveH
+  );
+  const canvasWidth = effectiveW * canvasScale;
+  const canvasHeight = effectiveH * canvasScale;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -35,13 +63,13 @@ export function GCodeViewer({ gcode }: GCodeViewerProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // Work-area frame.
     const frameX = PADDING_PX;
     const frameY = PADDING_PX;
-    const frameW = CANVAS_WIDTH - PADDING_PX * 2;
-    const frameH = CANVAS_HEIGHT - PADDING_PX * 2;
+    const frameW = canvasWidth - PADDING_PX * 2;
+    const frameH = canvasHeight - PADDING_PX * 2;
 
     ctx.strokeStyle = '#ccc';
     ctx.lineWidth = 1;
@@ -54,16 +82,13 @@ export function GCodeViewer({ gcode }: GCodeViewerProps) {
       ctx.textBaseline = 'middle';
       ctx.fillText(
         'Convierte una imagen para ver la visualización',
-        CANVAS_WIDTH / 2,
-        CANVAS_HEIGHT / 2
+        canvasWidth / 2,
+        canvasHeight / 2
       );
       return;
     }
 
-    const scale = Math.min(
-      frameW / WORK_AREA_W_MM,
-      frameH / WORK_AREA_H_MM
-    );
+    const scale = Math.min(frameW / effectiveW, frameH / effectiveH);
 
     const toCanvasX = (mmX: number): number =>
       frameX + mmX * scale;
@@ -97,7 +122,7 @@ export function GCodeViewer({ gcode }: GCodeViewerProps) {
     // Canvas rendering is synchronous — no cleanup needed.
     // If RAF or timers are added later, cancel them here.
     return () => {};
-  }, [gcode, parsed]);
+  }, [gcode, parsed, effectiveW, effectiveH, canvasWidth, canvasHeight]);
 
   return (
     <div className="space-y-2">
@@ -112,8 +137,8 @@ export function GCodeViewer({ gcode }: GCodeViewerProps) {
       <div className="rounded-lg border border-gray-200 p-4">
         <canvas
           ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
+          width={canvasWidth}
+          height={canvasHeight}
           className="block max-w-full rounded"
           aria-label="G-Code visualization"
         />

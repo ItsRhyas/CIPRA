@@ -164,14 +164,32 @@ def test_px_to_mm_scaling(default_config: ScaraConfig) -> None:
 
 
 def test_y_flip_uses_bottom_left_origin(default_config: ScaraConfig) -> None:
-    """The top of the image maps to the top of the work area (bottom-left origin)."""
+    """The Y axis is flipped and the image is centered in the work area."""
     top_left = simplify([[(0.0, 0.0)]], default_config, tolerance=2.0, image_shape=(200, 200))
     bottom_left = simplify(
         [[(0.0, 200.0)]], default_config, tolerance=2.0, image_shape=(200, 200)
     )
 
-    assert top_left.data[0][0] == pytest.approx((0.0, default_config.work_area_h_mm))
-    assert bottom_left.data[0][0] == pytest.approx((0.0, 0.0))
+    # 200x200 on A4: fit = 1.05, draw_h_mm = 210, offset_y_mm = 43.5
+    assert top_left.data[0][0] == pytest.approx((0.0, 253.5))
+    assert bottom_left.data[0][0] == pytest.approx((0.0, 43.5))
+
+
+def test_simplify_preserves_aspect_ratio(default_config: ScaraConfig) -> None:
+    """Non-square images are uniformly scaled and centered in the work area."""
+    # Portrait 100x200 on A4 portrait: width is the constraining dimension,
+    # producing side letterbox (offset_x_mm > 0).
+    path = [(0.0, 0.0), (100.0, 0.0), (100.0, 200.0), (0.0, 200.0)]
+    result = simplify([path], default_config, tolerance=0.0, image_shape=(200, 100))
+
+    mm_path = result.data[0]
+    xs = [x for x, _ in mm_path]
+    ys = [y for _, y in mm_path]
+    mm_width = max(xs) - min(xs)
+    mm_height = max(ys) - min(ys)
+
+    assert mm_width / mm_height == pytest.approx(100 / 200)
+    assert min(xs) > 0.0
 
 
 def test_tsp_ordering_is_deterministic(default_config: ScaraConfig) -> None:
