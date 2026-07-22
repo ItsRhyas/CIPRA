@@ -441,3 +441,13 @@ def test_preprocess_rotation_and_flip_combo() -> None:
     )
 
     assert not np.array_equal(rotated.data, rotated_flipped.data)
+
+
+def test_preprocess_detailed_uses_bilateral_filter() -> None:
+    """The 'detailed' variant uses bilateral filter (edge-preserving), not Gaussian."""
+    image = _asymmetric_image()
+
+    detailed = preprocess(image, variant="detailed")
+    fast = preprocess(image, variant="fast")
+
+    assert not np.array_equal(detailed.data, fast.data)
