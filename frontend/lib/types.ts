@@ -22,6 +22,8 @@ export interface ConvertParams {
   threshold: number;
   simplify_tolerance: number;
   scara?: ScaraConfig;
+  rotation_deg?: number;
+  invert?: boolean;
 }
 
 /**

@@ -1,17 +1,38 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
+import { ImageType, IMAGE_TYPE_PRESETS, IMAGE_TYPE_LABELS } from '@/lib/presets';
 import { Tooltip } from '@/components/Tooltip';
+import { Toggle } from '@/components/Toggle';
 
 export interface ParameterPanelProps {
   params: ConvertParams & { variant: Variant };
   onChange: (params: Partial<ConvertParams & { variant: Variant }>) => void;
   disabled?: boolean;
+  realtime: boolean;
+  onRealtimeChange: (v: boolean) => void;
+  imageType: ImageType;
+  onImageTypeChange: (t: ImageType) => void;
 }
 
 const VARIANTS: Variant[] = ['fast', 'detailed', 'balanced'];
+const ROTATIONS = [0, 90, 180, 270] as const;
+const IMAGE_TYPES: Exclude<ImageType, 'custom'>[] = [
+  'photo',
+  'line_art',
+  'sketch',
+  'text',
+];
+
+const WORK_AREA_PRESETS: Record<string, { work_area_w_mm: number; work_area_h_mm: number }> = {
+  'A4 Portrait': { work_area_w_mm: 210, work_area_h_mm: 297 },
+  'A4 Landscape': { work_area_w_mm: 297, work_area_h_mm: 210 },
+  'A3': { work_area_w_mm: 297, work_area_h_mm: 420 },
+  'Letter': { work_area_w_mm: 216, work_area_h_mm: 279 },
+};
+const WORK_AREA_PRESET_NAMES = Object.keys(WORK_AREA_PRESETS);
 
 interface NumericParamRowProps {
   id: string;
@@ -111,22 +132,126 @@ function NumericParamRow({
 /**
  * Controls for the vision pipeline parameters.
  *
- * - scale: 0.1–5.0
- * - threshold: 0–255
- * - simplify_tolerance: 0.1–10.0
- * - variant: fast | detailed | balanced
+ * Adds image-type presets, work-area config, rotation/invert transforms,
+ * and a real-time toggle on top of the existing parameter sliders.
  */
 export function ParameterPanel({
   params,
   onChange,
   disabled = false,
+  realtime,
+  onRealtimeChange,
+  imageType,
+  onImageTypeChange,
 }: ParameterPanelProps) {
+  const presetChangeRef = useRef(false);
+  const [workAreaOpen, setWorkAreaOpen] = useState(false);
+  const [workAreaPreset, setWorkAreaPreset] = useState('Custom');
+
+  useEffect(() => {
+    const w = params.scara?.work_area_w_mm;
+    const h = params.scara?.work_area_h_mm;
+    const match = WORK_AREA_PRESET_NAMES.find((name) => {
+      const dims = WORK_AREA_PRESETS[name];
+      return dims.work_area_w_mm === w && dims.work_area_h_mm === h;
+    });
+    setWorkAreaPreset(match ?? 'Custom');
+  }, [params.scara?.work_area_w_mm, params.scara?.work_area_h_mm]);
+
+  const handleImageParamChange = (
+    changes: Partial<ConvertParams & { variant: Variant }>
+  ) => {
+    if (presetChangeRef.current) {
+      presetChangeRef.current = false;
+    } else {
+      onImageTypeChange('custom');
+    }
+    onChange(changes);
+  };
+
+  const handlePreset = (type: ImageType) => {
+    onImageTypeChange(type);
+    if (type !== 'custom') {
+      presetChangeRef.current = true;
+      handleImageParamChange(IMAGE_TYPE_PRESETS[type]);
+    }
+  };
+
   const handleReset = () => {
+    onImageTypeChange('custom');
     onChange({ ...DEFAULTS });
+  };
+
+  const handleWorkAreaPreset = (preset: string) => {
+    setWorkAreaPreset(preset);
+    if (preset !== 'Custom') {
+      const dims = WORK_AREA_PRESETS[preset];
+      onChange({
+        scara: {
+          ...params.scara,
+          work_area_w_mm: dims.work_area_w_mm,
+          work_area_h_mm: dims.work_area_h_mm,
+        },
+      });
+    }
+  };
+
+  const handleWorkAreaDimension = (
+    field: 'work_area_w_mm' | 'work_area_h_mm',
+    raw: string
+  ) => {
+    const parsed = parseFloat(raw);
+    if (Number.isNaN(parsed)) return;
+    setWorkAreaPreset('Custom');
+    onChange({
+      scara: {
+        ...params.scara,
+        [field]: parsed,
+      },
+    });
+  };
+
+  const handleSpeed = (
+    field: 'travel_speed' | 'draw_speed',
+    raw: string
+  ) => {
+    const parsed = raw === '' ? undefined : parseFloat(raw);
+    if (raw !== '' && Number.isNaN(parsed)) return;
+    onChange({
+      scara: {
+        ...params.scara,
+        [field]: parsed,
+      },
+    });
   };
 
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+      <div>
+        <div className="mb-1 flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">
+            Image type
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {IMAGE_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => handlePreset(type)}
+              disabled={disabled}
+              className={`rounded-full px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                imageType === type
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {IMAGE_TYPE_LABELS[type]}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <NumericParamRow
         id="scale"
         label="Scale"
@@ -139,8 +264,8 @@ export function ParameterPanel({
         format={(v) => v.toFixed(1)}
         tooltip="Multiplica el tamaño final del dibujo. 1.0 = tamaño original."
         disabled={disabled}
-        onChange={(scale) => onChange({ scale })}
-        onReset={() => onChange({ scale: DEFAULTS.scale })}
+        onChange={(scale) => handleImageParamChange({ scale })}
+        onReset={() => handleImageParamChange({ scale: DEFAULTS.scale })}
       />
 
       <NumericParamRow
@@ -155,8 +280,8 @@ export function ParameterPanel({
         format={(v) => String(v)}
         tooltip="Sensibilidad de detección de bordes. Valores más bajos detectan más detalles."
         disabled={disabled}
-        onChange={(threshold) => onChange({ threshold })}
-        onReset={() => onChange({ threshold: DEFAULTS.threshold })}
+        onChange={(threshold) => handleImageParamChange({ threshold })}
+        onReset={() => handleImageParamChange({ threshold: DEFAULTS.threshold })}
       />
 
       <NumericParamRow
@@ -171,8 +296,8 @@ export function ParameterPanel({
         format={(v) => v.toFixed(1)}
         tooltip="Controla el nivel de detalle de las trayectorias. Valores más altos producen líneas más suaves pero menos detalladas."
         disabled={disabled}
-        onChange={(simplify_tolerance) => onChange({ simplify_tolerance })}
-        onReset={() => onChange({ simplify_tolerance: DEFAULTS.simplify_tolerance })}
+        onChange={(simplify_tolerance) => handleImageParamChange({ simplify_tolerance })}
+        onReset={() => handleImageParamChange({ simplify_tolerance: DEFAULTS.simplify_tolerance })}
       />
 
       <div>
@@ -187,7 +312,7 @@ export function ParameterPanel({
           </Tooltip>
           <button
             type="button"
-            onClick={() => onChange({ variant: DEFAULTS.variant })}
+            onClick={() => handleImageParamChange({ variant: DEFAULTS.variant })}
             disabled={disabled}
             className="ml-auto text-xs text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
             title="Reset to default"
@@ -199,7 +324,7 @@ export function ParameterPanel({
         <select
           id="variant"
           value={params.variant}
-          onChange={(e) => onChange({ variant: e.target.value as Variant })}
+          onChange={(e) => handleImageParamChange({ variant: e.target.value as Variant })}
           disabled={disabled}
           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
         >
@@ -210,6 +335,148 @@ export function ParameterPanel({
           ))}
         </select>
       </div>
+
+      <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+        <h3 className="text-sm font-medium text-gray-700">Transform</h3>
+        <div className="flex flex-wrap gap-2">
+          {ROTATIONS.map((deg) => (
+            <button
+              key={deg}
+              type="button"
+              onClick={() => onChange({ rotation_deg: deg })}
+              disabled={disabled}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                params.rotation_deg === deg
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {deg}°
+            </button>
+          ))}
+        </div>
+        <Toggle
+          enabled={params.invert ?? false}
+          onChange={(invert) => onChange({ invert })}
+          label="Invert colors"
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200">
+        <button
+          type="button"
+          onClick={() => setWorkAreaOpen(!workAreaOpen)}
+          className="flex w-full items-center justify-between rounded-lg p-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Work area
+          <span aria-hidden="true">{workAreaOpen ? '▲' : '▼'}</span>
+        </button>
+        {workAreaOpen && (
+          <div className="space-y-3 p-3 pt-0">
+            <div>
+              <label
+                htmlFor="workAreaPreset"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Preset
+              </label>
+              <select
+                id="workAreaPreset"
+                value={workAreaPreset}
+                onChange={(e) => handleWorkAreaPreset(e.target.value)}
+                disabled={disabled}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                {[...WORK_AREA_PRESET_NAMES, 'Custom'].map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor="workAreaW"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  W (mm)
+                </label>
+                <input
+                  id="workAreaW"
+                  type="number"
+                  value={params.scara?.work_area_w_mm ?? ''}
+                  onChange={(e) =>
+                    handleWorkAreaDimension('work_area_w_mm', e.target.value)
+                  }
+                  disabled={disabled}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="workAreaH"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  H (mm)
+                </label>
+                <input
+                  id="workAreaH"
+                  type="number"
+                  value={params.scara?.work_area_h_mm ?? ''}
+                  onChange={(e) =>
+                    handleWorkAreaDimension('work_area_h_mm', e.target.value)
+                  }
+                  disabled={disabled}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor="travelSpeed"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Travel speed (mm/min)
+                </label>
+                <input
+                  id="travelSpeed"
+                  type="number"
+                  placeholder="Default"
+                  value={params.scara?.travel_speed ?? ''}
+                  onChange={(e) => handleSpeed('travel_speed', e.target.value)}
+                  disabled={disabled}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="drawSpeed"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Draw speed (mm/min)
+                </label>
+                <input
+                  id="drawSpeed"
+                  type="number"
+                  placeholder="Default"
+                  value={params.scara?.draw_speed ?? ''}
+                  onChange={(e) => handleSpeed('draw_speed', e.target.value)}
+                  disabled={disabled}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Toggle
+        enabled={realtime}
+        onChange={onRealtimeChange}
+        label="Real-time generation"
+      />
 
       <button
         type="button"

@@ -42,7 +42,12 @@ class PipelineOrchestrator:
         warnings: list[Warning] = []
         stages_run: list[str] = []
 
-        result: StageResult = preprocess(image, params.variant)
+        result: StageResult = preprocess(
+            image,
+            params.variant,
+            rotation_deg=params.rotation_deg,
+            invert=params.invert,
+        )
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "preprocess")
 

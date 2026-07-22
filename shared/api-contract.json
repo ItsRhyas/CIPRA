@@ -57,6 +57,17 @@
         },
         "scara": {
           "$ref": "#/$defs/ScaraConfig"
+        },
+        "rotation_deg": {
+          "type": "integer",
+          "enum": [0, 90, 180, 270],
+          "default": 0,
+          "description": "Image rotation in degrees clockwise before processing."
+        },
+        "invert": {
+          "type": "boolean",
+          "default": false,
+          "description": "Invert image colors before processing."
         }
       },
       "additionalProperties": false

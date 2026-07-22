@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
+import { ImageType } from '@/lib/presets';
 import { useConvert } from '@/hooks/useConvert';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { CanvasPreview } from '@/components/CanvasPreview';
@@ -25,7 +26,22 @@ export default function HomePage() {
     DEFAULTS
   );
   const [activeTab, setActiveTab] = useState<TabId>('preview');
-  const { state, result, error, imageUrl, convert, reset } = useConvert();
+  const [imageType, setImageType] = useState<ImageType>('custom');
+  const [realtime, setRealtime] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { state, result, error, convert, reset } = useConvert();
+
+  // Create/revoke an object URL for the selected image so the preview canvas
+  // can render it immediately after file selection.
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   // Auto-switch to the G-Code viewer when a new conversion completes.
   useEffect(() => {
@@ -33,6 +49,18 @@ export default function HomePage() {
       setActiveTab('viewer');
     }
   }, [state, result]);
+
+  // Debounced real-time conversion: when the toggle is ON and a file is
+  // selected, wait 500ms after the last param/file change before converting.
+  useEffect(() => {
+    if (!realtime || !file) return;
+
+    const timer = setTimeout(() => {
+      convert(file, params);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [file, params, realtime, convert]);
 
   const isUploading = state === 'uploading';
   const canConvert = file !== null && !isUploading;
@@ -45,6 +73,8 @@ export default function HomePage() {
   const handleReset = () => {
     setFile(null);
     setParams(DEFAULTS);
+    setImageType('custom');
+    setRealtime(false);
     reset();
   };
 
@@ -80,7 +110,7 @@ export default function HomePage() {
             </div>
 
             <div role="tabpanel" className="min-h-[400px]">
-              {activeTab === 'preview' && <CanvasPreview imageUrl={imageUrl} />}
+              {activeTab === 'preview' && <CanvasPreview imageUrl={previewUrl} />}
               {activeTab === 'viewer' && (
                 <GCodeViewer
                   gcode={result?.gcode ?? null}
@@ -99,12 +129,22 @@ export default function HomePage() {
                 setParams((prev) => ({ ...prev, ...changes }))
               }
               disabled={isUploading}
+              realtime={realtime}
+              onRealtimeChange={setRealtime}
+              imageType={imageType}
+              onImageTypeChange={setImageType}
             />
 
             {error && (
               <div className="min-h-[2rem] rounded-lg bg-red-50 p-4 text-red-700" role="alert">
                 {error}
               </div>
+            )}
+
+            {isUploading && (
+              <p className="text-sm text-blue-600" aria-live="polite">
+                Generating...
+              </p>
             )}
 
             <div className="flex gap-4">

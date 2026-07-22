@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -138,3 +140,24 @@ def test_convert_valid_image_produces_gcode_without_stub_warnings(
     assert "gcode" in data
     assert "M3" in data["gcode"]
     assert "not yet implemented" not in " ".join(data["warnings"])
+
+
+@pytest.mark.django_db
+def test_convert_invalid_rotation_deg_returns_400(api_client, sample_image_bytes):
+    """A rotation_deg outside the allowed enum returns 400."""
+    params = json.dumps(
+        {
+            "scale": 1.0,
+            "threshold": 127,
+            "simplify_tolerance": 1.0,
+            "rotation_deg": 45,
+        }
+    )
+    response = api_client.post(
+        "/api/v1/convert/",
+        {"image": _image_file(sample_image_bytes), "params": params, "variant": "fast"},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+    assert "rotation_deg" in str(response.json()).lower()

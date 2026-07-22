@@ -57,6 +57,14 @@ class ConvertRequestSerializer(serializers.Serializer):
         if not isinstance(data, dict):
             raise serializers.ValidationError("params must be a JSON object.")
 
+        rotation_deg = data.get("rotation_deg", 0)
+        invert = data.get("invert", False)
+
+        if rotation_deg not in {0, 90, 180, 270}:
+            raise serializers.ValidationError(
+                "rotation_deg must be one of: 0, 90, 180, 270."
+            )
+
         try:
             scara_data = data.get("scara") or {}
             known_scara_fields = {
@@ -76,6 +84,8 @@ class ConvertRequestSerializer(serializers.Serializer):
                 threshold=data.get("threshold", 127),
                 simplify_tolerance=data.get("simplify_tolerance", 1.0),
                 scara=scara,
+                rotation_deg=rotation_deg,
+                invert=invert,
             )
         except TypeError as exc:
             raise serializers.ValidationError(f"Invalid params field: {exc}") from exc

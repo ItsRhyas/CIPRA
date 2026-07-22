@@ -10,4 +10,12 @@ export const DEFAULTS: ConvertParams & { variant: Variant } = {
   threshold: 128,
   simplify_tolerance: 1.0,
   variant: 'balanced',
+  scara: {
+    work_area_w_mm: 210,
+    work_area_h_mm: 297,
+    travel_speed: undefined,
+    draw_speed: undefined,
+  },
+  rotation_deg: 0,
+  invert: false,
 };

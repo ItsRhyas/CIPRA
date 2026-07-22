@@ -17,6 +17,8 @@ class ConvertParams:
     simplify_tolerance: float = 1.0
     variant: str = "balanced"
     scara: ScaraConfig | None = None
+    rotation_deg: int = 0
+    invert: bool = False
 
 
 @dataclass

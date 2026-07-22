@@ -375,3 +375,59 @@ def test_simplify_graceful_when_opencv_missing(default_config: ScaraConfig) -> N
     assert isinstance(result, StageResult)
     assert any(warning.code == "opencv_missing" for warning in result.warnings)
     assert result.data == []
+
+
+def _asymmetric_image() -> NDArray:
+    """Return a non-square image that is not symmetric under rotation."""
+    image = np.zeros((20, 10, 3), dtype=np.uint8)
+    image[:5, :5] = 255
+    return image
+
+
+def test_preprocess_default_rotation_and_invert_unchanged() -> None:
+    """Default rotation_deg=0 and invert=False keeps the previous behavior."""
+    image = _asymmetric_image()
+    assert np.array_equal(
+        preprocess(image).data,
+        preprocess(image, rotation_deg=0, invert=False).data,
+    )
+
+
+@pytest.mark.parametrize("rotation_deg", [90, 180, 270])
+def test_preprocess_rotation_changes_output(rotation_deg: int) -> None:
+    """Each non-default rotation changes the preprocessed output."""
+    image = _asymmetric_image()
+    default = preprocess(image)
+    rotated = preprocess(image, rotation_deg=rotation_deg)
+
+    assert not np.array_equal(default.data, rotated.data)
+    if rotation_deg in {90, 270}:
+        assert rotated.data.shape != default.data.shape
+
+
+def test_preprocess_invalid_rotation_raises() -> None:
+    """An unsupported rotation value raises ValueError."""
+    with pytest.raises(ValueError, match="rotation_deg must be one of"):
+        preprocess(_asymmetric_image(), rotation_deg=45)
+
+
+def test_preprocess_invert_negates_pixels() -> None:
+    """invert=True flips every pixel value in the blurred grayscale output."""
+    image = np.full((15, 15, 3), 128, dtype=np.uint8)
+    image[:5, :5] = 50
+
+    default = preprocess(image, variant="fast")
+    inverted = preprocess(image, variant="fast", invert=True)
+
+    assert np.array_equal(inverted.data, 255 - default.data)
+
+
+def test_preprocess_rotation_and_invert_combo() -> None:
+    """Rotation and invert can be combined; invert still negates pixel values."""
+    image = np.full((15, 15, 3), 128, dtype=np.uint8)
+    image[:5, :5] = 50
+
+    rotated = preprocess(image, rotation_deg=90, variant="fast")
+    rotated_inverted = preprocess(image, rotation_deg=90, invert=True, variant="fast")
+
+    assert np.array_equal(rotated_inverted.data, 255 - rotated.data)

@@ -1,23 +1,35 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 export interface GCodeOutputProps {
   gcode: string | null;
 }
 
+type CopyState = 'idle' | 'copied' | 'error';
+
 /**
  * Display generated G-Code with copy-to-clipboard and .gcode download actions.
  *
  * Shows an instructional empty state when no G-Code is available yet.
+ * Provides accessible copy feedback that reverts to idle after 1.5 seconds.
  */
 export function GCodeOutput({ gcode }: GCodeOutputProps) {
+  const [copyState, setCopyState] = useState<CopyState>('idle');
+
+  useEffect(() => {
+    if (copyState === 'idle') return;
+    const timer = setTimeout(() => setCopyState('idle'), 1500);
+    return () => clearTimeout(timer);
+  }, [copyState]);
+
   const handleCopy = async () => {
     if (!gcode) return;
     try {
       await navigator.clipboard.writeText(gcode);
+      setCopyState('copied');
     } catch {
-      // Clipboard access may be denied; fail silently.
+      setCopyState('error');
     }
   };
 
@@ -33,6 +45,13 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  const copyLabel =
+    copyState === 'copied'
+      ? '✓ Copied!'
+      : copyState === 'error'
+      ? '✗ Copy failed'
+      : 'Copy';
 
   if (!gcode) {
     return (
@@ -50,7 +69,7 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
           onClick={handleCopy}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          Copy
+          {copyLabel}
         </button>
         <button
           type="button"
@@ -59,6 +78,10 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
         >
           Download .gcode
         </button>
+      </div>
+      <div aria-live="polite" className="sr-only">
+        {copyState === 'copied' && 'G-Code copied to clipboard'}
+        {copyState === 'error' && 'Failed to copy G-Code'}
       </div>
       <pre className="max-h-96 overflow-auto rounded-lg border border-gray-200 bg-gray-900 p-4 font-mono text-sm text-gray-100">
         {gcode}

@@ -27,31 +27,40 @@ export class ApiError extends Error {
  */
 export async function convert(
   image: File,
-  params: ConvertParams & { variant: Variant }
-): Promise<ConvertResponse> {
+  params: ConvertParams & { variant: Variant },
+  signal?: AbortSignal
+): Promise<ConvertResponse | null> {
   const formData = new FormData();
   formData.append('image', image);
   formData.append('params', JSON.stringify(params));
   formData.append('variant', params.variant);
 
-  const response = await fetch(`${API_BASE}/convert/`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE}/convert/`, {
+      method: 'POST',
+      body: formData,
+      signal,
+    });
 
-  if (!response.ok) {
-    let errorMessage = `Request failed with status ${response.status}`;
-    let body: unknown = null;
-    try {
-      body = await response.json();
-      if (body && typeof body === 'object' && 'error' in body) {
-        errorMessage = (body as { error: string }).error;
+    if (!response.ok) {
+      let errorMessage = `Request failed with status ${response.status}`;
+      let body: unknown = null;
+      try {
+        body = await response.json();
+        if (body && typeof body === 'object' && 'error' in body) {
+          errorMessage = (body as { error: string }).error;
+        }
+      } catch {
+        // Backend did not return JSON; keep the generic status message.
       }
-    } catch {
-      // Backend did not return JSON; keep the generic status message.
+      throw new ApiError(errorMessage, response.status, body);
     }
-    throw new ApiError(errorMessage, response.status, body);
-  }
 
-  return response.json() as Promise<ConvertResponse>;
+    return response.json() as Promise<ConvertResponse>;
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return null;
+    }
+    throw err;
+  }
 }
