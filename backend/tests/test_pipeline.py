@@ -384,12 +384,12 @@ def _asymmetric_image() -> NDArray:
     return image
 
 
-def test_preprocess_default_rotation_and_invert_unchanged() -> None:
-    """Default rotation_deg=0 and invert=False keeps the previous behavior."""
+def test_preprocess_default_rotation_and_flip_unchanged() -> None:
+    """Default rotation_deg=0 and flip_h=False, flip_v=False keeps previous behavior."""
     image = _asymmetric_image()
     assert np.array_equal(
         preprocess(image).data,
-        preprocess(image, rotation_deg=0, invert=False).data,
+        preprocess(image, rotation_deg=0, flip_h=False, flip_v=False).data,
     )
 
 
@@ -411,23 +411,33 @@ def test_preprocess_invalid_rotation_raises() -> None:
         preprocess(_asymmetric_image(), rotation_deg=45)
 
 
-def test_preprocess_invert_negates_pixels() -> None:
-    """invert=True flips every pixel value in the blurred grayscale output."""
-    image = np.full((15, 15, 3), 128, dtype=np.uint8)
-    image[:5, :5] = 50
-
+def test_preprocess_flip_h_mirrors_output() -> None:
+    """flip_h=True mirrors the image horizontally."""
+    image = _asymmetric_image()
     default = preprocess(image, variant="fast")
-    inverted = preprocess(image, variant="fast", invert=True)
+    flipped = preprocess(image, variant="fast", flip_h=True)
 
-    assert np.array_equal(inverted.data, 255 - default.data)
+    assert not np.array_equal(default.data, flipped.data)
+    assert np.array_equal(default.data, np.fliplr(flipped.data))
 
 
-def test_preprocess_rotation_and_invert_combo() -> None:
-    """Rotation and invert can be combined; invert still negates pixel values."""
-    image = np.full((15, 15, 3), 128, dtype=np.uint8)
-    image[:5, :5] = 50
+def test_preprocess_flip_v_mirrors_output() -> None:
+    """flip_v=True mirrors the image vertically."""
+    image = _asymmetric_image()
+    default = preprocess(image, variant="fast")
+    flipped = preprocess(image, variant="fast", flip_v=True)
+
+    assert not np.array_equal(default.data, flipped.data)
+    assert np.array_equal(default.data, np.flipud(flipped.data))
+
+
+def test_preprocess_rotation_and_flip_combo() -> None:
+    """Rotation and flips can be combined."""
+    image = _asymmetric_image()
 
     rotated = preprocess(image, rotation_deg=90, variant="fast")
-    rotated_inverted = preprocess(image, rotation_deg=90, invert=True, variant="fast")
+    rotated_flipped = preprocess(
+        image, rotation_deg=90, flip_h=True, flip_v=True, variant="fast"
+    )
 
-    assert np.array_equal(rotated_inverted.data, 255 - rotated.data)
+    assert not np.array_equal(rotated.data, rotated_flipped.data)

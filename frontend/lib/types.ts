@@ -23,7 +23,8 @@ export interface ConvertParams {
   simplify_tolerance: number;
   scara?: ScaraConfig;
   rotation_deg?: number;
-  invert?: boolean;
+  flip_h?: boolean;
+  flip_v?: boolean;
 }
 
 /**

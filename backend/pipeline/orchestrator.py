@@ -46,7 +46,8 @@ class PipelineOrchestrator:
             image,
             params.variant,
             rotation_deg=params.rotation_deg,
-            invert=params.invert,
+            flip_h=params.flip_h,
+            flip_v=params.flip_v,
         )
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "preprocess")

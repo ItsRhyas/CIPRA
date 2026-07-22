@@ -355,11 +355,32 @@ export function ParameterPanel({
             </button>
           ))}
         </div>
-        <Toggle
-          enabled={params.invert ?? false}
-          onChange={(invert) => onChange({ invert })}
-          label="Invert colors"
-        />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => onChange({ flip_h: !(params.flip_h ?? false) })}
+            disabled={disabled}
+            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              params.flip_h
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            ↔ Flip H
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ flip_v: !(params.flip_v ?? false) })}
+            disabled={disabled}
+            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              params.flip_v
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            ↕ Flip V
+          </button>
+        </div>
       </div>
 
       <div className="rounded-lg border border-gray-200">

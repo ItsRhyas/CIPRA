@@ -14,17 +14,18 @@ def preprocess(
     image: NDArray,
     variant: str = "balanced",
     rotation_deg: int = 0,
-    invert: bool = False,
+    flip_h: bool = False,
+    flip_v: bool = False,
 ) -> StageResult:
     """
-    Rotate and optionally invert an image, then convert to grayscale, blur it,
+    Rotate and optionally flip an image, then convert to grayscale, blur it,
     and optionally Otsu-threshold it.
 
-    Rotation is applied first (on the color image), followed by color inversion,
-    then grayscale conversion. The ``balanced`` variant returns a binary image
-    produced by Gaussian blur followed by Otsu thresholding. Other variants fall
-    back to the blurred grayscale image so the stage remains usable while
-    additional presets are developed.
+    Rotation is applied first (on the color image), followed by horizontal/vertical
+    flip (mirror), then grayscale conversion. The ``balanced`` variant returns a
+    binary image produced by Gaussian blur followed by Otsu thresholding. Other
+    variants fall back to the blurred grayscale image so the stage remains usable
+    while additional presets are developed.
 
     If OpenCV is unavailable at runtime, the stage returns the input unchanged
     and emits a warning so the pipeline can still be exercised in CI or test
@@ -57,8 +58,12 @@ def preprocess(
     elif rotation_deg == 270:
         image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-    if invert:
-        image = cv2.bitwise_not(image)
+    if flip_h and flip_v:
+        image = cv2.flip(image, -1)  # both axes
+    elif flip_h:
+        image = cv2.flip(image, 1)  # horizontal mirror
+    elif flip_v:
+        image = cv2.flip(image, 0)  # vertical mirror
 
     if len(image.shape) == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

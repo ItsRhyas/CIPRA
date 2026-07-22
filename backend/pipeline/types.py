@@ -18,7 +18,8 @@ class ConvertParams:
     variant: str = "balanced"
     scara: ScaraConfig | None = None
     rotation_deg: int = 0
-    invert: bool = False
+    flip_h: bool = False
+    flip_v: bool = False
 
 
 @dataclass

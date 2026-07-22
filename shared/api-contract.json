@@ -64,10 +64,15 @@
           "default": 0,
           "description": "Image rotation in degrees clockwise before processing."
         },
-        "invert": {
+        "flip_h": {
           "type": "boolean",
           "default": false,
-          "description": "Invert image colors before processing."
+          "description": "Mirror the image horizontally (left-right) before processing."
+        },
+        "flip_v": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mirror the image vertically (up-down) before processing."
         }
       },
       "additionalProperties": false

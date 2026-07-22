@@ -17,5 +17,6 @@ export const DEFAULTS: ConvertParams & { variant: Variant } = {
     draw_speed: undefined,
   },
   rotation_deg: 0,
-  invert: false,
+  flip_h: false,
+  flip_v: false,
 };

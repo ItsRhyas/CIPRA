@@ -58,7 +58,8 @@ class ConvertRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("params must be a JSON object.")
 
         rotation_deg = data.get("rotation_deg", 0)
-        invert = data.get("invert", False)
+        flip_h = data.get("flip_h", False)
+        flip_v = data.get("flip_v", False)
 
         if rotation_deg not in {0, 90, 180, 270}:
             raise serializers.ValidationError(
@@ -85,7 +86,8 @@ class ConvertRequestSerializer(serializers.Serializer):
                 simplify_tolerance=data.get("simplify_tolerance", 1.0),
                 scara=scara,
                 rotation_deg=rotation_deg,
-                invert=invert,
+                flip_h=flip_h,
+                flip_v=flip_v,
             )
         except TypeError as exc:
             raise serializers.ValidationError(f"Invalid params field: {exc}") from exc
