@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
+import { useT } from '@/lib/i18n/useT';
 import { parseGCode, ParsedGCode } from '@/lib/gcode-parser';
 
 export interface GCodeViewerProps {
   gcode: string | null;
   workAreaW?: number;
   workAreaH?: number;
+  fallbackText?: string;
 }
 
 const CONTAINER_WIDTH = 560;
@@ -27,7 +29,9 @@ export function GCodeViewer({
   gcode,
   workAreaW = DEFAULT_WORK_AREA_W_MM,
   workAreaH = DEFAULT_WORK_AREA_H_MM,
+  fallbackText,
 }: GCodeViewerProps) {
+  const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const parsed = useMemo<ParsedGCode | null>(
     () => (gcode ? parseGCode(gcode) : null),
@@ -115,7 +119,7 @@ export function GCodeViewer({
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(
-        'Convert an image to see the toolpath',
+        fallbackText ?? t('viewer.empty'),
         canvasWidth / 2,
         canvasHeight / 2
       );
@@ -158,7 +162,7 @@ export function GCodeViewer({
     // Canvas rendering is synchronous — no cleanup needed.
     // If RAF or timers are added later, cancel them here.
     return () => {};
-  }, [gcode, parsed, effectiveW, effectiveH, canvasWidth, canvasHeight]);
+  }, [gcode, parsed, effectiveW, effectiveH, canvasWidth, canvasHeight, fallbackText, t]);
 
   return (
     <div className="space-y-2">
@@ -167,7 +171,7 @@ export function GCodeViewer({
           className="rounded-md border border-ci-warning/20 bg-ci-warning-bg px-3 py-2 font-body text-xs text-ci-warning"
           role="status"
         >
-          Some G-Code lines were not recognized and have been omitted.
+          {t('viewer.warning')}
         </div>
       )}
       <div className="rounded-lg border border-ci-rule bg-ci-surface p-6">
@@ -175,8 +179,8 @@ export function GCodeViewer({
           ref={canvasRef}
           width={canvasWidth}
           height={canvasHeight}
-          className="block max-w-full rounded"
-          aria-label="G-Code toolpath visualization"
+          className="block h-auto w-full rounded"
+          aria-label={t('viewer.ariaLabel')}
         />
       </div>
     </div>

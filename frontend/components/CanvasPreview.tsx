@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { useT } from '@/lib/i18n/useT';
 import { EmptyState } from '@/components/EmptyState';
 
 export interface CanvasPreviewProps {
@@ -10,6 +11,7 @@ export interface CanvasPreviewProps {
 const MAX_WIDTH = 600;
 
 export function CanvasPreview({ imageUrl }: CanvasPreviewProps) {
+  const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -42,15 +44,15 @@ export function CanvasPreview({ imageUrl }: CanvasPreviewProps) {
   }, [imageUrl]);
 
   if (!imageUrl) {
-    return <EmptyState>Upload an image to preview</EmptyState>;
+    return <EmptyState>{t('preview.empty')}</EmptyState>;
   }
 
   return (
     <div className="rounded-lg border border-ci-rule bg-ci-surface p-6">
       <canvas
         ref={canvasRef}
-        className="mx-auto block max-w-full rounded"
-        aria-label="Image preview"
+        className="block h-auto w-full rounded"
+        aria-label={t('preview.ariaLabel')}
       />
     </div>
   );

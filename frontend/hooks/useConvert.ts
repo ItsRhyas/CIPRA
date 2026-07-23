@@ -10,7 +10,7 @@ export interface UseConvertReturn {
   state: ConvertState;
   result: ConvertResponse | null;
   error: string | null;
-  convert: (image: File, params: ConvertParams & { variant: Variant }) => Promise<void>;
+  convert: (image: File, params: ConvertParams & { variant: Variant }, fallbackError?: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -49,7 +49,11 @@ export function useConvert(): UseConvertReturn {
   }, []);
 
   const convert = useCallback(
-    async (image: File, params: ConvertParams & { variant: Variant }) => {
+    async (
+      image: File,
+      params: ConvertParams & { variant: Variant },
+      fallbackError = 'An unexpected error occurred'
+    ) => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -80,7 +84,7 @@ export function useConvert(): UseConvertReturn {
           return;
         }
         const message =
-          err instanceof Error ? err.message : 'An unexpected error occurred';
+          err instanceof Error ? err.message : fallbackError;
         setError(message);
         setState('error');
       }

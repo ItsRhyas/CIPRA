@@ -3,7 +3,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
-import { ImageType, IMAGE_TYPE_PRESETS, IMAGE_TYPE_LABELS } from '@/lib/presets';
+import { ImageType, IMAGE_TYPE_PRESETS, IMAGE_TYPE_KEYS } from '@/lib/presets';
+import { useT } from '@/lib/i18n/useT';
 import { Tooltip } from '@/components/Tooltip';
 
 export interface ParameterPanelProps {
@@ -16,20 +17,37 @@ export interface ParameterPanelProps {
 
 const VARIANTS: Variant[] = ['fast', 'detailed', 'balanced'];
 const ROTATIONS = [0, 90, 180, 270] as const;
-const IMAGE_TYPES: Exclude<ImageType, 'custom'>[] = [
-  'photo',
-  'line_art',
-  'sketch',
-  'text',
-];
 
-const WORK_AREA_PRESETS: Record<string, { work_area_w_mm: number; work_area_h_mm: number }> = {
-  'A4 Portrait': { work_area_w_mm: 210, work_area_h_mm: 297 },
-  'A4 Landscape': { work_area_w_mm: 297, work_area_h_mm: 210 },
-  'A3': { work_area_w_mm: 297, work_area_h_mm: 420 },
-  'Letter': { work_area_w_mm: 216, work_area_h_mm: 279 },
+const IMAGE_TYPE_LABEL_KEYS: Record<Exclude<ImageType, 'custom'>, string> = {
+  photo: 'preset.photo',
+  line_art: 'preset.lineArt',
+  sketch: 'preset.sketch',
+  text: 'preset.text',
 };
-const WORK_AREA_PRESET_NAMES = Object.keys(WORK_AREA_PRESETS);
+
+const WORK_AREA_PRESETS: Record<
+  string,
+  { work_area_w_mm: number; work_area_h_mm: number; labelKey: string }
+> = {
+  a4portrait: {
+    work_area_w_mm: 210,
+    work_area_h_mm: 297,
+    labelKey: 'preset.a4portrait',
+  },
+  a4landscape: {
+    work_area_w_mm: 297,
+    work_area_h_mm: 210,
+    labelKey: 'preset.a4landscape',
+  },
+  a3: { work_area_w_mm: 297, work_area_h_mm: 420, labelKey: 'preset.a3' },
+  letter: {
+    work_area_w_mm: 216,
+    work_area_h_mm: 279,
+    labelKey: 'preset.letter',
+  },
+};
+const WORK_AREA_PRESET_KEYS = Object.keys(WORK_AREA_PRESETS);
+const CUSTOM_KEY = 'custom';
 
 interface PillButtonProps {
   label: string;
@@ -98,6 +116,8 @@ function NumericParamRow({
   onChange,
   onReset,
 }: NumericParamRowProps) {
+  const t = useT();
+
   const handleChange = (raw: string) => {
     const parsed = parse(raw);
     onChange(Number.isNaN(parsed) ? min : parsed);
@@ -128,9 +148,9 @@ function NumericParamRow({
           onClick={onReset}
           disabled={disabled}
           className="ml-auto font-body text-2xs font-medium tracking-precise text-ci-muted transition-colors hover:text-ci-text disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
-          aria-label={`Reset ${label.toLowerCase()} to default`}
+          aria-label={t('params.resetAria', { label: label.toLowerCase() })}
         >
-          Reset
+          {t('button.reset')}
         </button>
       </div>
       <div className="flex items-center gap-3">
@@ -174,17 +194,18 @@ export function ParameterPanel({
   imageType,
   onImageTypeChange,
 }: ParameterPanelProps) {
+  const t = useT();
   const presetChangeRef = useRef(false);
   const [workAreaOpen, setWorkAreaOpen] = useState(false);
 
   const workAreaPreset = useMemo(() => {
     const w = params.scara?.work_area_w_mm;
     const h = params.scara?.work_area_h_mm;
-    const match = WORK_AREA_PRESET_NAMES.find((name) => {
-      const dims = WORK_AREA_PRESETS[name];
+    const match = WORK_AREA_PRESET_KEYS.find((key) => {
+      const dims = WORK_AREA_PRESETS[key];
       return dims.work_area_w_mm === w && dims.work_area_h_mm === h;
     });
-    return match ?? 'Custom';
+    return match ?? CUSTOM_KEY;
   }, [params.scara?.work_area_w_mm, params.scara?.work_area_h_mm]);
 
   const handleImageParamChange = (
@@ -212,7 +233,7 @@ export function ParameterPanel({
   };
 
   const handleWorkAreaPreset = (preset: string) => {
-    if (preset !== 'Custom') {
+    if (preset !== CUSTOM_KEY) {
       const dims = WORK_AREA_PRESETS[preset];
       onChange({
         scara: {
@@ -243,7 +264,7 @@ export function ParameterPanel({
     raw: string
   ) => {
     const parsed = raw === '' ? undefined : parseFloat(raw);
-    if (raw !== '' && Number.isNaN(parsed)) return;
+    if (raw !== '' && Number.isNaN(parsed as number)) return;
     onChange({
       scara: {
         ...params.scara,
@@ -255,12 +276,12 @@ export function ParameterPanel({
   return (
     <div className="space-y-5 rounded-lg border border-ci-rule bg-ci-surface p-4">
       <div className="space-y-2">
-        <SectionLabel>Image type</SectionLabel>
+        <SectionLabel>{t('params.imageType')}</SectionLabel>
         <div className="flex flex-wrap gap-2">
-          {IMAGE_TYPES.map((type) => (
+          {IMAGE_TYPE_KEYS.map((type) => (
             <PillButton
               key={type}
-              label={IMAGE_TYPE_LABELS[type]}
+              label={t(IMAGE_TYPE_LABEL_KEYS[type])}
               selected={imageType === type}
               onClick={() => handlePreset(type)}
               disabled={disabled}
@@ -271,7 +292,7 @@ export function ParameterPanel({
 
       <NumericParamRow
         id="scale"
-        label="Scale"
+        label={t('params.scale')}
         value={params.scale}
         min={0.1}
         max={5.0}
@@ -279,7 +300,7 @@ export function ParameterPanel({
         defaultValue={DEFAULTS.scale}
         parse={parseFloat}
         format={(v) => v.toFixed(1)}
-        tooltip="Scales the final drawing size. 1.0 keeps the original size."
+        tooltip={t('params.scale.tooltip')}
         disabled={disabled}
         onChange={(scale) => handleImageParamChange({ scale })}
         onReset={() => handleImageParamChange({ scale: DEFAULTS.scale })}
@@ -287,7 +308,7 @@ export function ParameterPanel({
 
       <NumericParamRow
         id="threshold"
-        label="Threshold"
+        label={t('params.threshold')}
         value={params.threshold}
         min={0}
         max={255}
@@ -295,7 +316,7 @@ export function ParameterPanel({
         defaultValue={DEFAULTS.threshold}
         parse={(value) => parseInt(value, 10)}
         format={(v) => String(v)}
-        tooltip="Edge detection sensitivity. Lower values capture more detail."
+        tooltip={t('params.threshold.tooltip')}
         disabled={disabled}
         onChange={(threshold) => handleImageParamChange({ threshold })}
         onReset={() => handleImageParamChange({ threshold: DEFAULTS.threshold })}
@@ -303,7 +324,7 @@ export function ParameterPanel({
 
       <NumericParamRow
         id="tolerance"
-        label="Simplify tolerance"
+        label={t('params.tolerance')}
         value={params.simplify_tolerance}
         min={0.1}
         max={10.0}
@@ -311,7 +332,7 @@ export function ParameterPanel({
         defaultValue={DEFAULTS.simplify_tolerance}
         parse={parseFloat}
         format={(v) => v.toFixed(1)}
-        tooltip="Controls path detail. Higher values produce smoother but less detailed lines."
+        tooltip={t('params.tolerance.tooltip')}
         disabled={disabled}
         onChange={(simplify_tolerance) => handleImageParamChange({ simplify_tolerance })}
         onReset={() => handleImageParamChange({ simplify_tolerance: DEFAULTS.simplify_tolerance })}
@@ -319,12 +340,12 @@ export function ParameterPanel({
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Tooltip text='Image preprocessing mode. "balanced" uses automatic threshold detection.'>
+          <Tooltip text={t('params.variant.tooltip')}>
             <label
               htmlFor="variant"
               className="cursor-help font-body text-sm font-medium tracking-precise text-ci-text"
             >
-              Variant
+              {t('params.variant')}
             </label>
           </Tooltip>
           <button
@@ -332,9 +353,9 @@ export function ParameterPanel({
             onClick={() => handleImageParamChange({ variant: DEFAULTS.variant })}
             disabled={disabled}
             className="ml-auto font-body text-2xs font-medium tracking-precise text-ci-muted transition-colors hover:text-ci-text disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
-            aria-label="Reset variant to default"
+            aria-label={t('params.resetAria', { label: t('params.variant').toLowerCase() })}
           >
-            Reset
+            {t('button.reset')}
           </button>
         </div>
         <select
@@ -346,19 +367,19 @@ export function ParameterPanel({
         >
           {VARIANTS.map((v) => (
             <option key={v} value={v}>
-              {v.charAt(0).toUpperCase() + v.slice(1)}
+              {t(`variant.${v}`)}
             </option>
           ))}
         </select>
       </div>
 
       <div className="space-y-3 rounded-lg border border-ci-rule bg-ci-bg p-3">
-        <SectionLabel>Transform</SectionLabel>
+        <SectionLabel>{t('params.transform')}</SectionLabel>
         <div className="flex flex-wrap gap-2">
           {ROTATIONS.map((deg) => (
             <PillButton
               key={deg}
-              label={`${deg}°`}
+              label={t(`rotate.${deg}`)}
               selected={params.rotation_deg === deg}
               onClick={() => onChange({ rotation_deg: deg })}
               disabled={disabled}
@@ -367,13 +388,13 @@ export function ParameterPanel({
         </div>
         <div className="flex flex-wrap gap-2">
           <PillButton
-            label="Flip H"
+            label={t('flip.h')}
             selected={params.flip_h ?? false}
             onClick={() => onChange({ flip_h: !(params.flip_h ?? false) })}
             disabled={disabled}
           />
           <PillButton
-            label="Flip V"
+            label={t('flip.v')}
             selected={params.flip_v ?? false}
             onClick={() => onChange({ flip_v: !(params.flip_v ?? false) })}
             disabled={disabled}
@@ -387,9 +408,9 @@ export function ParameterPanel({
           onClick={() => setWorkAreaOpen(!workAreaOpen)}
           className="flex w-full items-center justify-between rounded-lg p-3 text-left font-body text-sm font-medium tracking-precise text-ci-text transition-colors hover:bg-ci-accent-subtle"
         >
-          <SectionLabel>Work area</SectionLabel>
+          <SectionLabel>{t('params.workArea')}</SectionLabel>
           <span className="font-body text-2xs font-medium tracking-precise text-ci-muted">
-            {workAreaOpen ? 'Hide' : 'Show'}
+            {workAreaOpen ? t('params.workArea.hide') : t('params.workArea.show')}
           </span>
         </button>
         {workAreaOpen && (
@@ -399,7 +420,7 @@ export function ParameterPanel({
                 htmlFor="workAreaPreset"
                 className="block font-body text-sm font-medium tracking-precise text-ci-text"
               >
-                Preset
+                {t('params.workArea.preset')}
               </label>
               <select
                 id="workAreaPreset"
@@ -408,11 +429,12 @@ export function ParameterPanel({
                 disabled={disabled}
                 className="mt-1 block w-full rounded-md border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm text-ci-text focus-ring"
               >
-                {[...WORK_AREA_PRESET_NAMES, 'Custom'].map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                {WORK_AREA_PRESET_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {t(WORK_AREA_PRESETS[key].labelKey)}
                   </option>
                 ))}
+                <option value={CUSTOM_KEY}>{t('preset.customSize')}</option>
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -421,7 +443,7 @@ export function ParameterPanel({
                   htmlFor="workAreaW"
                   className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
-                  W (mm)
+                  {t('params.workArea.w')}
                 </label>
                 <input
                   id="workAreaW"
@@ -439,7 +461,7 @@ export function ParameterPanel({
                   htmlFor="workAreaH"
                   className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
-                  H (mm)
+                  {t('params.workArea.h')}
                 </label>
                 <input
                   id="workAreaH"
@@ -459,12 +481,12 @@ export function ParameterPanel({
                   htmlFor="travelSpeed"
                   className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
-                  Travel speed (mm/min)
+                  {t('params.travelSpeed')}
                 </label>
                 <input
                   id="travelSpeed"
                   type="number"
-                  placeholder="Default"
+                  placeholder={t('params.travelSpeed.placeholder')}
                   value={params.scara?.travel_speed ?? ''}
                   onChange={(e) => handleSpeed('travel_speed', e.target.value)}
                   disabled={disabled}
@@ -476,12 +498,12 @@ export function ParameterPanel({
                   htmlFor="drawSpeed"
                   className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
-                  Draw speed (mm/min)
+                  {t('params.drawSpeed')}
                 </label>
                 <input
                   id="drawSpeed"
                   type="number"
-                  placeholder="Default"
+                  placeholder={t('params.drawSpeed.placeholder')}
                   value={params.scara?.draw_speed ?? ''}
                   onChange={(e) => handleSpeed('draw_speed', e.target.value)}
                   disabled={disabled}
@@ -499,7 +521,7 @@ export function ParameterPanel({
         disabled={disabled}
         className="w-full rounded-md bg-ci-accent-subtle px-4 py-2 font-body text-sm font-semibold text-ci-accent transition-colors hover:bg-ci-accent hover:text-white disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
       >
-        Reset defaults
+        {t('params.resetDefaults')}
       </button>
     </div>
   );

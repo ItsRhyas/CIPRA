@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { DM_Serif_Display, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import { I18nProviderWrapper } from './I18nProviderWrapper';
 
 const displayFont = DM_Serif_Display({
   subsets: ['latin'],
@@ -37,7 +38,7 @@ export default function RootLayout({
       className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
     >
       <body className="min-h-screen bg-ci-bg font-body text-ci-text antialiased">
-        {children}
+        <I18nProviderWrapper>{children}</I18nProviderWrapper>
       </body>
     </html>
   );

@@ -1,37 +1,6 @@
-# Spec: parameter-tooltips
+# Delta for parameter-tooltips
 
-## Requirements
-
-### Requirement: Parameter Descriptions
-
-The frontend `ParameterPanel` MUST show a brief description per parameter, surfaced as a hover tooltip or subtle adjacent helper text, sourced from `api-contract.json`. The tooltip MUST render using `ci-*` tokens (`ci-text` background on a dark tooltip surface) and English copy. Tooltip positioning MUST use `mb-1.5` and `leading-none` for tight, legible placement.
-
-#### Scenario: tooltip on hover
-
-- GIVEN the `ParameterPanel` is rendered
-- WHEN the user hovers on the "scale" label
-- THEN a tooltip appears explaining that increasing `scale` enlarges output coordinates
-- AND the tooltip uses `ci-*` token-derived colors
-
-#### Scenario: non-distracting
-
-- GIVEN the `ParameterPanel` is rendered
-- WHEN no parameter label is hovered
-- THEN no description overlaps or obscures the input controls
-
-### Requirement: Description Content
-
-Each parameter description MUST explain how varying the parameter affects the result, not merely restate the field name.
-
-#### Scenario: threshold description
-
-- GIVEN the description for `threshold`
-- THEN it states that lower values detect more edges (denser paths) and higher values detect fewer
-
-#### Scenario: simplify_tolerance description
-
-- GIVEN the description for `simplify_tolerance`
-- THEN it states that higher values simplify contours more aggressively (fewer points)
+## ADDED Requirements
 
 ### Requirement: ParameterPanel Visual Restyling
 
@@ -128,3 +97,24 @@ The `Toggle` component MUST derive its enabled/disabled translate values from th
 - WHEN the enabled and disabled translates are examined
 - THEN the values reference spacing-scale tokens or a CSS variable
 - AND no arbitrary pixel literals appear in the translate classes
+
+## MODIFIED Requirements
+
+### Requirement: Parameter Descriptions
+
+The frontend `ParameterPanel` MUST show a brief description per parameter, surfaced as a hover tooltip or subtle adjacent helper text, sourced from `api-contract.json`. The tooltip MUST render using `ci-*` tokens (`ci-text` background on a dark tooltip surface) and English copy. Tooltip positioning MUST use `mb-1.5` and `leading-none` for tight, legible placement.
+
+(Previously: tooltip surfaced as hover/helper text sourced from api-contract.json, with no visual/token constraints specified.)
+
+#### Scenario: tooltip on hover
+
+- GIVEN the `ParameterPanel` is rendered
+- WHEN the user hovers on the "scale" label
+- THEN a tooltip appears explaining that increasing `scale` enlarges output coordinates
+- AND the tooltip uses `ci-*` token-derived colors
+
+#### Scenario: non-distracting
+
+- GIVEN the `ParameterPanel` is rendered
+- WHEN no parameter label is hovered
+- THEN no description overlaps or obscures the input controls

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
+import { useT } from '@/lib/i18n/useT';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_SIZE_MB = 10;
@@ -12,6 +13,7 @@ export interface ImageDropzoneProps {
 }
 
 export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps) {
+  const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -123,7 +125,7 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
           disabled={disabled}
         />
         {disabled ? (
-          <p className="font-body text-sm text-ci-muted">Uploading&hellip;</p>
+          <p className="font-body text-sm text-ci-muted">{t('dropzone.uploading')}</p>
         ) : file ? (
           <div>
             <p className="font-body text-sm font-medium text-ci-text">{file.name}</p>
@@ -134,10 +136,10 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
         ) : (
           <div>
             <p className="font-body text-sm font-medium text-ci-text">
-              Drop an image here, or click to browse
+              {t('dropzone.empty')}
             </p>
             <p className="mt-1 font-body text-xs tracking-precise text-ci-muted">
-              PNG, JPEG, or WebP &mdash; up to {MAX_SIZE_MB}&nbsp;MB
+              {t('dropzone.formats')}
             </p>
           </div>
         )}
@@ -148,8 +150,8 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
           role="alert"
         >
           {error === 'unsupported type'
-            ? 'Unsupported file type. Use PNG, JPEG, or WebP.'
-            : `File exceeds the ${MAX_SIZE_MB}&nbsp;MB limit.`}
+            ? t('dropzone.error.type')
+            : t('dropzone.error.size')}
         </p>
       )}
     </div>

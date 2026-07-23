@@ -32,10 +32,9 @@ export const IMAGE_TYPE_PRESETS: Record<
   },
 };
 
-export const IMAGE_TYPE_LABELS: Record<ImageType, string> = {
-  photo: 'Photo',
-  line_art: 'Line Art',
-  sketch: 'Sketch',
-  text: 'Text',
-  custom: 'Custom',
-};
+export const IMAGE_TYPE_KEYS: Exclude<ImageType, 'custom'>[] = [
+  'photo',
+  'line_art',
+  'sketch',
+  'text',
+];

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useT } from '@/lib/i18n/useT';
 import { EmptyState } from '@/components/EmptyState';
 
 export interface GCodeOutputProps {
@@ -10,6 +11,7 @@ export interface GCodeOutputProps {
 type CopyState = 'idle' | 'copied' | 'error';
 
 export function GCodeOutput({ gcode }: GCodeOutputProps) {
+  const t = useT();
   const [copyState, setCopyState] = useState<CopyState>('idle');
 
   useEffect(() => {
@@ -43,13 +45,13 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
 
   const copyLabel =
     copyState === 'copied'
-      ? 'Copied'
+      ? t('gcode.copied')
       : copyState === 'error'
-        ? 'Copy failed'
-        : 'Copy';
+        ? t('gcode.copyFailed')
+        : t('gcode.copy');
 
   if (!gcode) {
-    return <EmptyState>Convert an image to generate G-Code</EmptyState>;
+    return <EmptyState>{t('gcode.empty')}</EmptyState>;
   }
 
   return (
@@ -67,12 +69,12 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
           onClick={handleDownload}
           className="rounded-md border border-ci-rule bg-ci-surface px-4 py-2 font-body text-sm font-medium text-ci-text transition-colors hover:bg-ci-accent-subtle focus-ring"
         >
-          Download .gcode
+          {t('gcode.download')}
         </button>
       </div>
       <div aria-live="polite" className="sr-only">
-        {copyState === 'copied' && 'G-Code copied to clipboard'}
-        {copyState === 'error' && 'Failed to copy G-Code'}
+        {copyState === 'copied' && t('gcode.copyAria')}
+        {copyState === 'error' && t('gcode.copyFailedAria')}
       </div>
       <pre className="max-h-96 overflow-auto rounded-lg border border-ci-rule bg-[#131417] p-5 font-mono text-xs leading-relaxed text-[#DDE1E6]">
         {gcode}
