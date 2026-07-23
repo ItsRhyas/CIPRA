@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { EmptyState } from '@/components/EmptyState';
 
 export interface GCodeOutputProps {
   gcode: string | null;
@@ -8,12 +9,6 @@ export interface GCodeOutputProps {
 
 type CopyState = 'idle' | 'copied' | 'error';
 
-/**
- * Display generated G-Code with copy-to-clipboard and .gcode download actions.
- *
- * Shows an instructional empty state when no G-Code is available yet.
- * Provides accessible copy feedback that reverts to idle after 1.5 seconds.
- */
 export function GCodeOutput({ gcode }: GCodeOutputProps) {
   const [copyState, setCopyState] = useState<CopyState>('idle');
 
@@ -48,33 +43,29 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
 
   const copyLabel =
     copyState === 'copied'
-      ? '✓ Copied!'
+      ? 'Copied'
       : copyState === 'error'
-      ? '✗ Copy failed'
-      : 'Copy';
+        ? 'Copy failed'
+        : 'Copy';
 
   if (!gcode) {
-    return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-gray-500">
-        Convert an image to generate G-Code
-      </div>
-    );
+    return <EmptyState>Convert an image to generate G-Code</EmptyState>;
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex gap-2">
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-ci-accent px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-ci-accent-hover focus-ring"
         >
           {copyLabel}
         </button>
         <button
           type="button"
           onClick={handleDownload}
-          className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
+          className="rounded-md border border-ci-rule bg-ci-surface px-4 py-2 font-body text-sm font-medium text-ci-text transition-colors hover:bg-ci-accent-subtle focus-ring"
         >
           Download .gcode
         </button>
@@ -83,7 +74,7 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
         {copyState === 'copied' && 'G-Code copied to clipboard'}
         {copyState === 'error' && 'Failed to copy G-Code'}
       </div>
-      <pre className="max-h-96 overflow-auto rounded-lg border border-gray-200 bg-gray-900 p-4 font-mono text-sm text-gray-100">
+      <pre className="max-h-96 overflow-auto rounded-lg border border-ci-rule bg-[#131417] p-5 font-mono text-xs leading-relaxed text-[#DDE1E6]">
         {gcode}
       </pre>
     </div>
