@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { memo, useCallback, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n/useT';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -12,7 +12,7 @@ export interface ImageDropzoneProps {
   disabled?: boolean;
 }
 
-export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps) {
+export const ImageDropzone = memo(function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps) {
   const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,4 +165,4 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
       )}
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
 import { ImageType } from '@/lib/presets';
@@ -104,26 +104,26 @@ export default function HomePage() {
   const isUploading = state === 'uploading';
   const canConvert = file !== null && !isUploading;
 
-  const handleConvert = async () => {
+  const handleConvert = useCallback(async () => {
     if (!file) return;
     isManualConvertRef.current = true;
     await convert(file, params, t('error.unexpected'));
-  };
+  }, [file, params, convert, t]);
 
-  const handleFileSelect = (selectedFile: File | null) => {
+  const handleFileSelect = useCallback((selectedFile: File | null) => {
     if (selectedFile) {
       reset();
     }
     setFile(selectedFile);
-  };
+  }, [reset]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setFile(null);
     setParams(DEFAULTS);
     setImageType('custom');
     setRealtime(false);
     reset();
-  };
+  }, [reset]);
 
   return (
     <div className="flex min-h-screen flex-col">

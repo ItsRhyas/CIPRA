@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import { useI18n } from '@/lib/i18n/useT';
 import { Locale } from '@/lib/i18n/types';
 
 const LOCALES: Locale[] = ['en', 'es'];
 
-export function LanguageSwitcher() {
+export const LanguageSwitcher = memo(function LanguageSwitcher() {
   const { locale, setLocale } = useI18n();
 
   return (
@@ -31,4 +31,4 @@ export function LanguageSwitcher() {
       })}
     </div>
   );
-}
+});
