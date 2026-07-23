@@ -126,7 +126,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-y-scroll">
       {/* ── Header ── */}
       <header className="border-b border-ci-rule bg-white">
         <div className="mx-auto max-w-5xl px-4 py-6">
@@ -254,7 +254,7 @@ export default function HomePage() {
       </main>
 
       {/* ── Sticky bottom bar — Convert always accessible ── */}
-      <footer className="sticky bottom-0 z-20 border-t border-ci-rule bg-white/95 backdrop-blur-sm">
+      <footer className="sticky bottom-0 z-20 border-t border-ci-rule bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-4">
             {isUploading && (

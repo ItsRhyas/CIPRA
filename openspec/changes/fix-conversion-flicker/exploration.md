@@ -1,102 +1,124 @@
-## Exploration: fix-conversion-flicker
+## Exploration: fix-conversion-flicker (round 2)
 
-### Current State
+> **Re-investigation**: Previous fixes (`1160c41`, `f801f8a`) addressed `setResult(null)`, auto-tab-switch, reset-on-new-image, I18nProvider `useMemo`, and `I18nProviderWrapper` `React.memo`. Flicker persists on every conversion. This round investigates the ROOT CAUSE that survives all those fixes.
 
-The CIPRA frontend has a real-time mode (`realtime` toggle, `app/page.tsx:30`) that re-fires the conversion 500ms after any parameter change. The user reports the **whole page** flickers/jumps during conversion, both in real-time mode and on manual button click.
+### Current State (post-fixes)
 
-**State machine** (`hooks/useConvert.ts`):
-- `convert()` (line 51) synchronously batches three `setState` calls before awaiting the API:
-  1. `setState('uploading')` — line 65
-  2. `setResult(null)` — line 66  ← clears the previous G-Code
-  3. `setError(null)` — line 67
-- On success: `setResult(response); setState('success')` (lines 77-78)
-- `reset()` is the only other place `setResult(null)` is called (line 47)
+**`hooks/useConvert.ts` (95 lines)** — `setResult(null)` is gone (line 65-66 now only does `setState('uploading')` + `setError(null)`). `result` persists across the request and is only cleared by `reset()`. The two remaining state writes per conversion are:
+- Pre-await: `setState('uploading')` + `setError(null)` (line 65-66)
+- Post-await: `setResult(response)` + `setState('success')` (line 76-77)
 
-**Page wiring** (`app/page.tsx`):
-- `result` is consumed in three places: `GCodeViewer gcode` (line 194), `GCodeOutput gcode` (line 203), `WarningsList warnings` (line 234)
-- A `useEffect` (lines 83-87) auto-switches `activeTab` to `'viewer'` on every success
-- A debounced `useEffect` (lines 89-95) re-triggers `convert()` 500ms after any change in `[file, params, realtime, convert, t]`
-- Footer conditionally renders `{t('status.generating')}` when `isUploading` (lines 245-249)
+**`lib/i18n/I18nProvider.tsx` (93 lines)** — Context value is memoized at line 86: `useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t])`. `t` itself is `useCallback` with `[locale]` deps (line 65-84). The provider only re-renders on locale change.
 
-**GCodeViewer** (`components/GCodeViewer.tsx`):
-- `parsed = useMemo(() => gcode ? parseGCode(gcode) : null, [gcode])` (line 36-39) — recomputes from non-null to null on every conversion
-- The draw `useEffect` (line 69) deps: `[gcode, parsed, effectiveW, effectiveH, canvasWidth, canvasHeight, fallbackText, t]`
-- When `gcode` flips to `null`, the effect clears the canvas (`ctx.clearRect`), fills white, draws the empty-state fallback text (lines 76-130)
-- When the new gcode arrives, the effect re-runs and redraws all travel + stroke paths
+**`app/I18nProviderWrapper.tsx` (14 lines)** — Wrapped in `React.memo` (line 10).
 
-**I18nProvider** (`lib/i18n/I18nProvider.tsx`):
-- The context value `{ locale, setLocale, t }` is NOT memoized (line 86) — new object every render. The provider itself only re-renders on locale change, so this is not a real cause of flicker in this flow. (It would matter if we ever started re-rendering the provider during conversion, which we don't.)
+**`app/page.tsx` (291 lines)** — `useT()` at line 23, `isManualConvertRef` guard at line 36, auto-tab-switch guarded at line 84-93, debounced effect with `t` in deps at line 95-102, `handleFileSelect` with `reset()` at line 113-118, `LanguageSwitcher` in footer at line 265.
 
-### Affected Areas
-
-- `frontend/hooks/useConvert.ts` — `convert()` clears `result` at line 66, causing the empty-state cascade
-- `frontend/app/page.tsx` — `useEffect` at lines 83-87 forces tab switch on every success (line 85), and the debounced `useEffect` at lines 89-95 re-triggers convert
-- `frontend/components/GCodeViewer.tsx` — Draw effect at line 69 re-runs and clears canvas when `gcode` flips to `null` and back
+**Layout structure (post-i18n, the major change):**
+- Root: `flex min-h-screen flex-col` (page.tsx:129)
+- Header: `border-b border-ci-rule bg-white` (page.tsx:131)
+- Main: `flex-1` with `pb-24 pt-8` (page.tsx:143)
+- Footer: `sticky bottom-0 z-20 border-t border-ci-rule bg-white/95 backdrop-blur-sm` (page.tsx:257)
+- Tab content wrapper: `min-h-[450px]` (page.tsx:200)
+- Two-column grid: `md:grid-cols-[2fr_1fr]` (page.tsx:150)
 
 ### Root Cause Analysis
 
-The user's hypothesis is **partially correct but incomplete**. The flicker is actually the **sum of three independent re-render events** that happen in sequence during a single conversion cycle:
+**The `t` function and i18n context are CORRECTLY stable.** The chain is:
+1. `t = useCallback(..., [locale])` in I18nProvider — stable
+2. `value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t])` in I18nProvider — stable
+3. `useT()` returns `ctx.t` directly — same reference
+4. `I18nContext.Provider value={value}` — context consumers don't re-render
+5. `I18nProviderWrapper` is `React.memo` — wrapper doesn't re-render
 
-1. **`setResult(null)` at start of `convert()` (line 66)** — the *initial* flicker. In the same render commit as `setState('uploading')`, the page re-renders with `result === null`. The GCodeViewer effect (line 69) clears the canvas and draws the empty-state fallback text. The WarningsList disappears. The GCodeOutput (if on that tab) clears. Footer also gains the "Generating..." text in the same commit (the conditional `<p>` element appears, line 245).
+In Next.js App Router, the layout (server component) does NOT re-render when the page (client component) state changes. So `I18nProviderWrapper` never re-renders during conversion regardless of `React.memo`. The memoization is correct but a no-op in practice.
 
-2. **Tab auto-switch on success (page.tsx:83-87)** — the *second* flicker. When the new result arrives, the effect forces `activeTab = 'viewer'`. If the user was on the `preview` tab, the entire left-column tab content swaps. The `min-h-[450px]` wrapper keeps a fixed minimum, but the rendered content (canvas with aspect ratio vs. GCodeViewer with a 560×792 work area) is a different height, so the right column (params panel) shifts vertically.
+**The remaining flicker is caused by the sticky footer's CSS stack**, not by React re-renders. Specifically:
 
-3. **Canvas clear → full redraw on GCodeViewer (GCodeViewer.tsx:69-168)** — the *third* flicker. After the tab swap, the draw effect clears the canvas and re-runs all travel + stroke operations. This is synchronous and fast but still produces a visible flash from "empty" to "filled".
+**1. The `backdrop-blur-sm` + `bg-white/95` on the footer (page.tsx:257).** This combination creates a filter+transparency stack that the browser renders on a GPU layer. When the main content behind the footer re-renders (which happens on every conversion state change), the browser must:
+- Recompute the blurred backdrop (the entire region of the page that's behind the footer)
+- Recomposite the footer layer onto the main layer
 
-**Why it feels like the whole page moves**: the `useConvert` state changes commit *together* with the tab switch in real-time mode (the user is almost always on the `preview` tab while watching the image). The combined effect of (1) the GCodeViewer redrawing empty → filled, (2) the right column shifting due to tab swap, and (3) the footer height change (3px from the "Generating..." badge appearing/disappearing) is large enough to read as a whole-page jump.
+The recomputation + recomposite happens in a separate frame from the main render. On some browsers (especially Chromium-based), this causes a **visible flash** where the footer briefly shows the un-blurred/un-composited state before the GPU layer catches up. The flash is perceived as a "jump" because the semi-transparent white background (`bg-white/95`) momentarily shows the main content at full opacity underneath.
 
-The `setResult(null)` is the **dominant** cause. Removing it alone would eliminate the canvas clear and the WarningsList disappearance, which removes the most visible flash. But the tab auto-switch and the footer height change would still produce a smaller, secondary flicker.
+**2. The footer's "Generating…" text appearing/disappearing (page.tsx:261-263).** This is the trigger that forces the re-render behind the footer. The text is inside the left flex group, alongside the `LanguageSwitcher`. The footer height calculation:
+- Left group: max(LanguageSwitcher 32px, "Generating…" 20px) = 32px
+- Right group: buttons 36px (py-2 + text-sm line-height 20)
+- Outer flex: max(32, 36) = 36px + py-3 (24px) + border-t (1px) = **61px stable**
+
+So the footer height is stable. But the **content** behind the footer changes (because the main grid re-renders). This is what forces the blur recomputation.
+
+**3. The two-column grid with `min-h-[450px]` (page.tsx:200) + `md:grid-cols-[2fr_1fr]` (page.tsx:150).** The grid row height is the MAX of the two columns. The left column has `min-h-[450px]`. The right column has the ParameterPanel. When the page re-renders, the ParameterPanel re-evaluates its layout (even though its output is the same). In some browsers, the grid re-resolves the row height during the re-render, causing a 1-2px fluctuation that crosses the scrollbar threshold. When the scrollbar appears/disappears, the entire page content shifts horizontally by ~15px (the scrollbar width). **This is the most likely explanation for the "header flickers"** — the header is at the top of the page, so a horizontal shift moves it visibly.
+
+**Why it didn't happen before i18n**: The pre-i18n layout (commit `a22638e`'s parent) was a single column with `max-w-3xl px-6` and Convert/Reset buttons inline in the page content. There was no sticky footer, no `backdrop-blur-sm`, and no two-column grid. The single column's content height was dominated by the ParameterPanel, which was always below the canvas, not beside it. The scrollbar behavior was different (the page was narrower at 768px max, so content fit more easily without triggering scrollbar changes).
+
+### Affected Areas
+
+- `frontend/app/page.tsx:257` — Footer with `backdrop-blur-sm` and `bg-white/95` is the primary visual flash source
+- `frontend/app/page.tsx:200` — `min-h-[450px]` on tab content interacts with the two-column grid to potentially cause 1-2px row height fluctuations
+- `frontend/app/page.tsx:150` — `md:grid-cols-[2fr_1fr]` grid may re-resolve on re-render
+- `frontend/app/page.tsx:261-263` — "Generating…" text appearance/disappearance is the trigger for the footer recomposite
+- `frontend/app/page.tsx:143` — `pb-24` on main reserves space for the sticky footer
 
 ### Approaches
 
-1. **Remove `setResult(null)` and let result persist during loading** — `convert()` keeps the previous `result` until the new one arrives. Only `reset()` clears it.
-   - Pros: Smallest diff. Eliminates the canvas-clear flash. Warnings stay visible. Old G-Code remains in the viewer tab so the user has continuous feedback.
-   - Cons: User sees stale gcode during the 200-1500ms request window. If the new request errors, the stale result is still showing alongside the error (which may be confusing).
-   - Effort: **Low** (delete one line + guard the success effect).
+1. **Remove `backdrop-blur-sm` and `bg-white/95` from the footer; use solid `bg-white`** — eliminates the GPU compositing layer entirely. Footer becomes a simple opaque block. No blur recomputation, no recomposite flash.
+   - Pros: Eliminates the primary visual flash source. Simplest diff (one Tailwind class). No functional regression — the blur was decorative.
+   - Cons: Loses the frosted-glass aesthetic. Footer becomes a solid bar (acceptable for a utility bar).
+   - Effort: **Low** (1 class change in page.tsx:257).
 
-2. **Keep `setResult(null)` but suppress the auto-tab-switch during real-time mode** — track whether the conversion came from real-time vs. manual. Only auto-switch on manual `handleConvert` calls.
-   - Pros: User keeps their current view in real-time mode; no content swap = no shift. Manual clicks still get the auto-switch convenience.
-   - Cons: Doesn't fix the canvas clear flash. User has to manually click the viewer tab to see the new result in real-time.
-   - Effort: **Low** (a new flag, ~5 lines in `page.tsx`).
+2. **Add `overflow-y: scroll` to the root `div` (page.tsx:129)** — forces a permanent scrollbar gutter, preventing the scrollbar from appearing/disappearing. This is a defensive measure that prevents the horizontal-shift theory regardless of whether it's the actual cause.
+   - Pros: Defensive against any 1-2px content height fluctuation. Standard pattern for preventing CLS from scrollbar.
+   - Cons: Always-visible scrollbar gutter (even when not needed) wastes ~15px of horizontal space. Slight visual change.
+   - Effort: **Low** (1 CSS property on the root div).
 
-3. **Keep previous result AND suppress auto-tab-switch in real-time + add a small "stale" badge on the viewer** — combines (1) and (2) and adds a "Regenerating..." pill on the GCodeViewer when the displayed gcode is stale.
-   - Pros: Best UX. No flash, no shift, user is informed. Manual convert still auto-switches.
-   - Cons: More code (stale tracking, badge component).
-   - Effort: **Medium** (~20-30 lines across `useConvert`, `page.tsx`, `GCodeViewer`).
+3. **Move "Generating…" to a fixed overlay (not inside the footer)** — a small floating pill near the Convert button. Footer content stays static during conversion.
+   - Pros: Footer never re-renders during conversion. No blur recomputation trigger.
+   - Cons: Changes the UX design (status indicator moves). More code.
+   - Effort: **Medium** (new component + positioning logic, ~15-20 lines).
 
-4. **Add a CSS opacity/transition overlay during conversion** — keep the canvas content but fade it under a translucent overlay while loading, fade out the overlay when new data lands.
-   - Pros: Visual polish. Smooth feel.
-   - Cons: Doesn't address the root cause; the underlying canvas still clears. Purely cosmetic.
-   - Effort: **Medium** (overlay component + CSS).
+4. **Memoize the footer as a separate component** — extract the footer JSX into a `Footer` component wrapped in `React.memo`. Since the footer only re-renders when its props change, and its props are stable (the LanguageSwitcher is the only dynamic child), this prevents the footer from re-rendering during conversion state changes.
+   - Pros: Prevents the footer from re-rendering at all during conversion. No blur recomputation.
+   - Cons: Doesn't help if the blur is triggered by the MAIN content changing (which it is). The blur depends on what's behind the footer, not the footer itself.
+   - Effort: **Low** (extract component, ~20 lines).
 
-5. **Batch all convert state into a single `useReducer`** — atomic state transitions, fewer re-render cycles.
-   - Pros: Cleaner architecture, fewer re-renders by design.
-   - Cons: Doesn't help if the same number of distinct UI bits still re-render. Refactor risk.
-   - Effort: **High** (rewrites `useConvert`).
+5. **Remove the `min-h-[450px]` from the tab content wrapper** — let the tab content size naturally. This prevents the grid row from being artificially constrained.
+   - Pros: Eliminates the grid row height fluctuation theory. The tab content's natural height varies by content (CanvasPreview vs GCodeViewer), but the `space-y-4` on the left column already provides vertical rhythm.
+   - Cons: If the tab content is shorter than the right column (ParameterPanel), the right column stretches and the left column has empty space at the bottom. This was the original reason for `min-h-[450px]`.
+   - Effort: **Low** (1 class change). But may need to add a min-height to the right column or accept asymmetric columns.
+
+6. **Combine 1 + 2** — solid footer + permanent scrollbar gutter. Belt-and-suspenders approach that addresses both theories.
+   - Pros: Highest confidence fix. Addresses both the blur flash and the scrollbar shift.
+   - Cons: Two small visual changes (solid footer instead of frosted, always-visible scrollbar).
+   - Effort: **Low** (2 class changes).
 
 ### Recommendation
 
-**Approach 3** is the right call, but ship **Approach 1 first as the minimum viable fix**, then layer the stale badge on top if needed.
+**Approach 6 (combine 1 + 2)** is the right call for this round.
 
 Reasoning:
-- Approach 1 alone removes the dominant flicker (canvas clear + WarningsList disappear) with a one-line change. Risk is minimal because the only consumer that could be confused is the auto-tab-switch on success, which we should ALSO guard.
-- The tab auto-switch should be conditioned on the conversion source. We can pass an `origin: 'manual' | 'realtime'` flag through `convert()` or maintain a small `ref` in `page.tsx` that tracks which call site fired the last convert.
-- Once (1) + (2) are in place, the page should feel stable. The stale badge (3) is a UX nicety but not required to fix the bug.
-- Approaches 4 and 5 are not addressing the root cause and add complexity for cosmetic gain.
+- Approach 1 (solid footer) is the most direct fix for the blur recomposite flash. The `backdrop-blur-sm` is the single most expensive visual effect in the layout and the most likely source of the perceived flicker. Removing it is a one-class change with no functional regression.
+- Approach 2 (permanent scrollbar gutter) is a standard defensive pattern. Even if the scrollbar shift is not the current cause, it prevents future regressions from any 1-2px content height change. The cost is ~15px of horizontal space, which is negligible at the `max-w-5xl` (1024px) width.
+- Approaches 3, 4, 5 are not addressing the root cause as directly. Approach 3 changes the UX design. Approach 4 doesn't help (the blur depends on what's behind the footer). Approach 5 may reintroduce the original asymmetric-column problem that `min-h-[450px]` was added to solve.
 
 **Concrete shape of the fix (for the proposal phase):**
-1. `useConvert.convert()`: drop `setResult(null)` from the pre-await block. Keep `setState('uploading')` and `setError(null)`. The `result` only becomes `null` via `reset()`.
-2. `useConvert`: add an optional `origin: 'manual' | 'realtime'` parameter to `convert()` that is stored in a ref and returned on the next render (or returned directly on the UseConvertReturn so `page.tsx` can read it).
-3. `app/page.tsx`: change the auto-tab-switch effect to only fire when `result` is **newly set** and `origin === 'manual'`. (For real-time, leave the active tab alone so the user can keep previewing the image.)
-4. Optional: a small "Regenerating..." pill on `GCodeViewer` when `gcode` is set but `state === 'uploading'`. Skip if (1)+(2) feel stable enough.
+1. `app/page.tsx:257` — change `bg-white/95 backdrop-blur-sm` to `bg-white` on the footer. One class change.
+2. `app/page.tsx:129` — add `overflow-y-scroll` to the root `<div className="flex min-h-screen flex-col">`. One class addition.
+
+**Diagnostic step before applying**: Open Chrome DevTools → Performance tab → record during a conversion. Look for:
+- "Compositor" frames with "Update layer tree" — confirms the blur recomposite theory
+- "Layout" entries with "Layout shift" — confirms the scrollbar shift theory
+- "Paint" entries in the footer area — confirms the visual flash
+
+This will definitively confirm which theory (or both) is the cause.
 
 ### Risks
 
-- **Stale gcode shown on error**: if the new request errors, the previous result is still displayed alongside the error message. The error is shown above the warnings (page.tsx:224-231) so the user will see it, but we should test this flow.
-- **Breaking the "stale data" assumption**: if the user changes the image entirely and we don't reset `result` between image changes, they'd see the old gcode for the old image while the new one loads. **Mitigation**: in `app/page.tsx` `handleReset` and on `setFile(null)`, call `reset()` so the result is cleared. The dropzone's `onSelect` (line 131) doesn't call `reset` today — if a user replaces the image, the old gcode stays. We should also reset on file change.
-- **Real-time mode first convert**: if the user enables real-time mode for the first time on an image with no prior result, there's no stale data to show — the GCodeViewer just shows the empty state until the first success. That matches current behavior with the same empty-state path; no new risk.
-- **i18n context value object identity**: the I18nProvider context value is re-created on every provider render (line 86). This is unrelated to the flicker today (provider only re-renders on locale change), but it WILL cause `useT()` consumers to re-render unnecessarily if the provider ever re-renders for another reason. Out of scope for this fix but worth flagging in the design phase.
+- **Visual regression on footer**: Removing `backdrop-blur-sm` changes the footer from a frosted-glass look to a solid bar. This is a deliberate design change, not a bug. The footer is a utility bar, not a decorative element.
+- **Permanent scrollbar gutter**: ~15px of horizontal space is always reserved for the scrollbar, even when the page doesn't scroll. On narrow viewports (< 400px), this is noticeable. The page already has `max-w-5xl` (1024px) so this is unlikely to be an issue on desktop.
+- **Both changes together are more disruptive than either alone**: If the user wants to preserve the frosted-glass look, Approach 1 alone is sufficient. If the user wants to preserve the natural scrollbar behavior, Approach 2 alone is sufficient. Combining them is the safest fix but changes two visual properties.
+- **The flicker might be caused by something I haven't identified**: The two theories (blur recomposite, scrollbar shift) are my best guesses from code analysis alone. Browser-level debugging is needed to confirm. If neither theory is correct, the fix won't work and further investigation is needed.
 
 ### Ready for Proposal
 
-**Yes.** Recommendation: Approach 1 (remove `setResult(null)`) + guard the auto-tab-switch for real-time mode. Both are minimal, low-risk changes that target the root cause. Optional stale badge if user testing shows it's needed.
+**Yes**, with the caveat that a quick browser-level diagnostic (Chrome DevTools Performance recording during a conversion) should be done first to confirm the root cause. The fix is small (2 class changes) and low-risk, so it can be applied without a full proposal cycle. If the diagnostic confirms a different cause, the proposal can be adjusted.
