@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
 import { ImageType } from '@/lib/presets';
@@ -23,8 +23,6 @@ const TAB_LABELS: Record<TabId, string> = {
 
 const TAB_IDS: TabId[] = ['preview', 'viewer', 'gcode'];
 
-const tabPanelId = (tab: TabId) => `${tab}-panel`;
-
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
   const [params, setParams] = useState<ConvertParams & { variant: Variant }>(
@@ -35,6 +33,9 @@ export default function HomePage() {
   const [realtime, setRealtime] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { state, result, error, convert, reset } = useConvert();
+  const baseId = useId();
+  const tabId = (tab: TabId) => `${baseId}-tab-${tab}`;
+  const panelId = (tab: TabId) => `${baseId}-panel-${tab}`;
 
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
     preview: null,
@@ -69,7 +70,7 @@ export default function HomePage() {
     e.preventDefault();
     const nextTab = TAB_IDS[nextIndex];
     setActiveTab(nextTab);
-    focusTab(nextTab);
+    requestAnimationFrame(() => focusTab(nextTab));
   };
 
   useEffect(() => {
@@ -156,32 +157,40 @@ export default function HomePage() {
 
               {/* Tabs */}
               <div role="tablist" aria-label="Conversion views" className="flex border-b border-ci-rule">
-                {TAB_IDS.map((tabId) => (
-                  <button
-                    key={tabId}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === tabId}
-                    onClick={() => setActiveTab(tabId)}
-                    className={`relative pb-2.5 pr-6 font-body text-sm font-medium tracking-precise transition-colors ${
-                      activeTab === tabId
-                        ? 'text-ci-accent after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-ci-accent'
-                        : 'text-ci-muted hover:text-ci-text'
-                    }`}
-                  >
-                    {TAB_LABELS[tabId]}
-                  </button>
-                ))}
+                {TAB_IDS.map((tab, index) => {
+                  const active = activeTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      ref={setTabRef(tab)}
+                      type="button"
+                      role="tab"
+                      id={tabId(tab)}
+                      aria-controls={panelId(tab)}
+                      aria-selected={active}
+                      tabIndex={active ? 0 : -1}
+                      onClick={() => setActiveTab(tab)}
+                      onKeyDown={(e) => handleTabKeyDown(e, index)}
+                      className={`relative pb-2.5 pr-6 font-body text-sm font-medium tracking-precise transition-colors ${
+                        active
+                          ? 'text-ci-accent after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-ci-accent'
+                          : 'text-ci-muted hover:text-ci-text'
+                      }`}
+                    >
+                      {TAB_LABELS[tab]}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Tab panels */}
               {activeTab === 'preview' && (
-                <div role="tabpanel">
+                <div role="tabpanel" id={panelId('preview')} aria-labelledby={tabId('preview')} tabIndex={0}>
                   <CanvasPreview imageUrl={previewUrl} />
                 </div>
               )}
               {activeTab === 'viewer' && (
-                <div role="tabpanel">
+                <div role="tabpanel" id={panelId('viewer')} aria-labelledby={tabId('viewer')} tabIndex={0}>
                   <GCodeViewer
                     gcode={result?.gcode ?? null}
                     workAreaW={params.scara?.work_area_w_mm}
@@ -190,7 +199,7 @@ export default function HomePage() {
                 </div>
               )}
               {activeTab === 'gcode' && (
-                <div role="tabpanel">
+                <div role="tabpanel" id={panelId('gcode')} aria-labelledby={tabId('gcode')} tabIndex={0}>
                   <GCodeOutput gcode={result?.gcode ?? null} />
                 </div>
               )}
