@@ -18,10 +18,10 @@ const DEFAULT_WORK_AREA_H_MM = 297;
 /**
  * Render parsed G-Code on a native canvas.
  *
- * Draws the A4 work-area frame, rapid travels (G0) as light gray dashed
- * lines and draw strokes (G1) as solid black lines. The Y axis is flipped
- * so G-Code coordinates (origin bottom-left) map correctly to canvas
- * coordinates (origin top-left).
+ * Draws the work-area frame, rapid travels (G0) as dashed light-gray lines and
+ * draw strokes (G1) as solid dark lines. The Y axis is flipped so G-Code
+ * coordinates (origin bottom-left) map correctly to canvas coordinates
+ * (origin top-left).
  */
 export function GCodeViewer({
   gcode,
@@ -34,27 +34,33 @@ export function GCodeViewer({
     [gcode]
   );
 
-  let effectiveW = workAreaW;
-  let effectiveH = workAreaH;
-  if (!Number.isFinite(effectiveW) || effectiveW <= 0) {
-    console.warn(
-      `GCodeViewer: invalid workAreaW (${workAreaW}), falling back to A4 (${DEFAULT_WORK_AREA_W_MM}).`
-    );
-    effectiveW = DEFAULT_WORK_AREA_W_MM;
-  }
-  if (!Number.isFinite(effectiveH) || effectiveH <= 0) {
-    console.warn(
-      `GCodeViewer: invalid workAreaH (${workAreaH}), falling back to A4 (${DEFAULT_WORK_AREA_H_MM}).`
-    );
-    effectiveH = DEFAULT_WORK_AREA_H_MM;
-  }
+  const { effectiveW, effectiveH, canvasWidth, canvasHeight } = useMemo(() => {
+    let effectiveW = workAreaW;
+    let effectiveH = workAreaH;
+    if (!Number.isFinite(effectiveW) || effectiveW <= 0) {
+      console.warn(
+        `GCodeViewer: invalid workAreaW (${workAreaW}), falling back to A4 (${DEFAULT_WORK_AREA_W_MM}).`
+      );
+      effectiveW = DEFAULT_WORK_AREA_W_MM;
+    }
+    if (!Number.isFinite(effectiveH) || effectiveH <= 0) {
+      console.warn(
+        `GCodeViewer: invalid workAreaH (${workAreaH}), falling back to A4 (${DEFAULT_WORK_AREA_H_MM}).`
+      );
+      effectiveH = DEFAULT_WORK_AREA_H_MM;
+    }
 
-  const canvasScale = Math.min(
-    CONTAINER_WIDTH / effectiveW,
-    CONTAINER_HEIGHT / effectiveH
-  );
-  const canvasWidth = effectiveW * canvasScale;
-  const canvasHeight = effectiveH * canvasScale;
+    const canvasScale = Math.min(
+      CONTAINER_WIDTH / effectiveW,
+      CONTAINER_HEIGHT / effectiveH
+    );
+    return {
+      effectiveW,
+      effectiveH,
+      canvasWidth: effectiveW * canvasScale,
+      canvasHeight: effectiveH * canvasScale,
+    };
+  }, [workAreaW, workAreaH]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -71,17 +77,45 @@ export function GCodeViewer({
     const frameW = canvasWidth - PADDING_PX * 2;
     const frameH = canvasHeight - PADDING_PX * 2;
 
-    ctx.strokeStyle = '#ccc';
+    // Draw subtle grid inside the work area using the shared CSS grid cell.
+    const gridSpacingPx = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--grid-cell'),
+      10
+    ) || 24;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(frameX, frameY, frameW, frameH);
+    ctx.clip();
+
+    ctx.strokeStyle = 'rgb(30 58 95 / 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = frameX; x <= frameX + frameW; x += gridSpacingPx) {
+      ctx.beginPath();
+      ctx.moveTo(x, frameY);
+      ctx.lineTo(x, frameY + frameH);
+      ctx.stroke();
+    }
+    for (let y = frameY; y <= frameY + frameH; y += gridSpacingPx) {
+      ctx.beginPath();
+      ctx.moveTo(frameX, y);
+      ctx.lineTo(frameX + frameW, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Work-area border.
+    ctx.strokeStyle = '#DDE1E6';
     ctx.lineWidth = 1;
     ctx.strokeRect(frameX, frameY, frameW, frameH);
 
     if (!gcode || !parsed) {
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#556270';
+      ctx.font = '13px var(--font-body, Inter, system-ui, sans-serif)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(
-        'Convierte una imagen para ver la visualización',
+        'Convert an image to see the toolpath',
         canvasWidth / 2,
         canvasHeight / 2
       );
@@ -90,13 +124,12 @@ export function GCodeViewer({
 
     const scale = Math.min(frameW / effectiveW, frameH / effectiveH);
 
-    const toCanvasX = (mmX: number): number =>
-      frameX + mmX * scale;
+    const toCanvasX = (mmX: number): number => frameX + mmX * scale;
     const toCanvasY = (mmY: number): number =>
       frameY + frameH - mmY * scale;
 
-    // Travels (G0) — light gray dashed.
-    ctx.strokeStyle = '#d1d5db';
+    // Travels (G0) — dashed light gray.
+    ctx.strokeStyle = '#DDE1E6';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     for (const travel of parsed.travels) {
@@ -106,8 +139,8 @@ export function GCodeViewer({
       ctx.stroke();
     }
 
-    // Strokes (G1) — solid black.
-    ctx.strokeStyle = '#000000';
+    // Strokes (G1) — solid dark.
+    ctx.strokeStyle = '#131417';
     ctx.lineWidth = 2;
     ctx.setLineDash([]);
     for (const stroke of parsed.strokes) {
@@ -115,7 +148,10 @@ export function GCodeViewer({
       ctx.beginPath();
       ctx.moveTo(toCanvasX(stroke.points[0].x), toCanvasY(stroke.points[0].y));
       for (let i = 1; i < stroke.points.length; i += 1) {
-        ctx.lineTo(toCanvasX(stroke.points[i].x), toCanvasY(stroke.points[i].y));
+        ctx.lineTo(
+          toCanvasX(stroke.points[i].x),
+          toCanvasY(stroke.points[i].y)
+        );
       }
       ctx.stroke();
     }
@@ -128,19 +164,19 @@ export function GCodeViewer({
     <div className="space-y-2">
       {parsed && parsed.warnings.length > 0 && (
         <div
-          className="rounded-md bg-yellow-50 px-3 py-2 text-xs text-yellow-800"
+          className="rounded-md border border-ci-warning/20 bg-ci-warning-bg px-3 py-2 font-body text-xs text-ci-warning"
           role="status"
         >
-          Algunas líneas de G-Code no fueron reconocidas y fueron omitidas.
+          Some G-Code lines were not recognized and have been omitted.
         </div>
       )}
-      <div className="rounded-lg border border-gray-200 p-4">
+      <div className="rounded-lg border border-ci-rule bg-ci-surface p-6">
         <canvas
           ref={canvasRef}
           width={canvasWidth}
           height={canvasHeight}
           className="block max-w-full rounded"
-          aria-label="G-Code visualization"
+          aria-label="G-Code toolpath visualization"
         />
       </div>
     </div>

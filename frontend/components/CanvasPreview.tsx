@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { EmptyState } from '@/components/EmptyState';
 
 export interface CanvasPreviewProps {
   imageUrl: string | null;
@@ -8,12 +9,6 @@ export interface CanvasPreviewProps {
 
 const MAX_WIDTH = 600;
 
-/**
- * Render the uploaded image on a canvas at its natural aspect ratio.
- *
- * The canvas is never wider than 600 px; height is computed from the aspect ratio.
- * When imageUrl is null the canvas is cleared and an empty state is shown.
- */
 export function CanvasPreview({ imageUrl }: CanvasPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -47,18 +42,14 @@ export function CanvasPreview({ imageUrl }: CanvasPreviewProps) {
   }, [imageUrl]);
 
   if (!imageUrl) {
-    return (
-      <div className="flex h-64 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-500">
-        Upload an image to preview
-      </div>
-    );
+    return <EmptyState>Upload an image to preview</EmptyState>;
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    <div className="rounded-lg border border-ci-rule bg-ci-surface p-6">
       <canvas
         ref={canvasRef}
-        className="block max-w-full rounded"
+        className="mx-auto block max-w-full rounded"
         aria-label="Image preview"
       />
     </div>
