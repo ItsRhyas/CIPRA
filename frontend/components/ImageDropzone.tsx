@@ -74,6 +74,17 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
     }
   }, [disabled]);
 
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        inputRef.current?.click();
+      }
+    },
+    [disabled]
+  );
+
   const onChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selected = e.target.files?.[0];
@@ -88,6 +99,7 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
     <div className="space-y-2">
       <div
         onClick={onClick}
+        onKeyDown={onKeyDown}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
