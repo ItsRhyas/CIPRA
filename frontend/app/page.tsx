@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
 import { ImageType } from '@/lib/presets';
@@ -11,6 +11,7 @@ import { GCodeViewer } from '@/components/GCodeViewer';
 import { ParameterPanel } from '@/components/ParameterPanel';
 import { GCodeOutput } from '@/components/GCodeOutput';
 import { WarningsList } from '@/components/WarningsList';
+import { Toggle } from '@/components/Toggle';
 
 type TabId = 'preview' | 'viewer' | 'gcode';
 
@@ -19,6 +20,10 @@ const TAB_LABELS: Record<TabId, string> = {
   viewer: 'Paths',
   gcode: 'G-Code',
 };
+
+const TAB_IDS: TabId[] = ['preview', 'viewer', 'gcode'];
+
+const tabPanelId = (tab: TabId) => `${tab}-panel`;
 
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -30,6 +35,42 @@ export default function HomePage() {
   const [realtime, setRealtime] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { state, result, error, convert, reset } = useConvert();
+
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
+    preview: null,
+    viewer: null,
+    gcode: null,
+  });
+
+  const setTabRef = (tab: TabId) => (el: HTMLButtonElement | null) => {
+    tabRefs.current[tab] = el;
+  };
+
+  const focusTab = (tab: TabId) => {
+    tabRefs.current[tab]?.focus();
+  };
+
+  const handleTabKeyDown = (
+    e: React.KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) => {
+    let nextIndex = index;
+    if (e.key === 'ArrowLeft') {
+      nextIndex = index > 0 ? index - 1 : TAB_IDS.length - 1;
+    } else if (e.key === 'ArrowRight') {
+      nextIndex = index < TAB_IDS.length - 1 ? index + 1 : 0;
+    } else if (e.key === 'Home') {
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      nextIndex = TAB_IDS.length - 1;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    const nextTab = TAB_IDS[nextIndex];
+    setActiveTab(nextTab);
+    focusTab(nextTab);
+  };
 
   useEffect(() => {
     if (!file) {
@@ -94,9 +135,28 @@ export default function HomePage() {
           {/* Canvas / viewer area */}
           {file && (
             <>
+              {/* Real-time toggle — positioned above the fold */}
+              <div className="flex items-center justify-between rounded-lg border border-ci-rule bg-ci-surface px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Toggle
+                    enabled={realtime}
+                    onChange={setRealtime}
+                    label="Real-time"
+                  />
+                  {realtime && (
+                    <span className="font-body text-2xs font-semibold uppercase tracking-precise text-ci-accent">
+                      Live
+                    </span>
+                  )}
+                </div>
+                <p className="font-body text-2xs tracking-precise text-ci-muted">
+                  Regenerates paths automatically when parameters change.
+                </p>
+              </div>
+
               {/* Tabs */}
               <div role="tablist" aria-label="Conversion views" className="flex border-b border-ci-rule">
-                {(Object.keys(TAB_LABELS) as TabId[]).map((tabId) => (
+                {TAB_IDS.map((tabId) => (
                   <button
                     key={tabId}
                     type="button"
@@ -114,18 +174,26 @@ export default function HomePage() {
                 ))}
               </div>
 
-              {/* Tab panel */}
-              <div role="tabpanel">
-                {activeTab === 'preview' && <CanvasPreview imageUrl={previewUrl} />}
-                {activeTab === 'viewer' && (
+              {/* Tab panels */}
+              {activeTab === 'preview' && (
+                <div role="tabpanel">
+                  <CanvasPreview imageUrl={previewUrl} />
+                </div>
+              )}
+              {activeTab === 'viewer' && (
+                <div role="tabpanel">
                   <GCodeViewer
                     gcode={result?.gcode ?? null}
                     workAreaW={params.scara?.work_area_w_mm}
                     workAreaH={params.scara?.work_area_h_mm}
                   />
-                )}
-                {activeTab === 'gcode' && <GCodeOutput gcode={result?.gcode ?? null} />}
-              </div>
+                </div>
+              )}
+              {activeTab === 'gcode' && (
+                <div role="tabpanel">
+                  <GCodeOutput gcode={result?.gcode ?? null} />
+                </div>
+              )}
 
               {/* Parameters */}
               <ParameterPanel
@@ -134,8 +202,6 @@ export default function HomePage() {
                   setParams((prev) => ({ ...prev, ...changes }))
                 }
                 disabled={isUploading}
-                realtime={realtime}
-                onRealtimeChange={setRealtime}
                 imageType={imageType}
                 onImageTypeChange={setImageType}
               />
@@ -169,12 +235,6 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {realtime && (
-              <span className="font-body text-2xs font-medium tracking-precise text-ci-muted uppercase">
-                Live
-              </span>
-            )}
-
             <button
               type="button"
               onClick={handleReset}

@@ -1,18 +1,15 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
 import { ImageType, IMAGE_TYPE_PRESETS, IMAGE_TYPE_LABELS } from '@/lib/presets';
 import { Tooltip } from '@/components/Tooltip';
-import { Toggle } from '@/components/Toggle';
 
 export interface ParameterPanelProps {
   params: ConvertParams & { variant: Variant };
   onChange: (params: Partial<ConvertParams & { variant: Variant }>) => void;
   disabled?: boolean;
-  realtime: boolean;
-  onRealtimeChange: (v: boolean) => void;
   imageType: ImageType;
   onImageTypeChange: (t: ImageType) => void;
 }
@@ -33,6 +30,42 @@ const WORK_AREA_PRESETS: Record<string, { work_area_w_mm: number; work_area_h_mm
   'Letter': { work_area_w_mm: 216, work_area_h_mm: 279 },
 };
 const WORK_AREA_PRESET_NAMES = Object.keys(WORK_AREA_PRESETS);
+
+interface PillButtonProps {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+function PillButton({ label, selected, onClick, disabled }: PillButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-full px-3 py-1 font-body text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-ring ${
+        selected
+          ? 'bg-ci-accent text-white'
+          : 'border border-ci-rule bg-ci-surface text-ci-text hover:border-ci-accent hover:text-ci-accent'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+interface SectionLabelProps {
+  children: React.ReactNode;
+}
+
+function SectionLabel({ children }: SectionLabelProps) {
+  return (
+    <span className="font-body text-2xs font-semibold uppercase tracking-wider text-ci-muted">
+      {children}
+    </span>
+  );
+}
 
 interface NumericParamRowProps {
   id: string;
@@ -81,27 +114,26 @@ function NumericParamRow({
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1">
+      <div className="mb-1 flex items-center gap-2">
         <Tooltip text={tooltip}>
           <label
             htmlFor={id}
-            className="text-sm font-medium text-gray-700 cursor-help"
+            className="cursor-help font-body text-sm font-medium tracking-precise text-ci-text"
           >
-            {label}: {format(value)}
+            {label}: <span className="tabular-nums">{format(value)}</span>
           </label>
         </Tooltip>
         <button
           type="button"
           onClick={onReset}
           disabled={disabled}
-          className="ml-auto text-xs text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-          title="Reset to default"
+          className="ml-auto font-body text-2xs font-medium tracking-precise text-ci-muted transition-colors hover:text-ci-text disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
           aria-label={`Reset ${label.toLowerCase()} to default`}
         >
-          ↺
+          Reset
         </button>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <input
           id={id}
           type="range"
@@ -122,7 +154,7 @@ function NumericParamRow({
           onChange={(e) => handleChange(e.target.value)}
           onBlur={(e) => handleBlur(e.target.value)}
           disabled={disabled}
-          className="w-20 px-1 py-0.5 text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-20 rounded-md border border-ci-rule bg-ci-surface px-1 py-0.5 text-center font-body text-sm tabular-nums text-ci-text focus-ring"
         />
       </div>
     </div>
@@ -133,29 +165,26 @@ function NumericParamRow({
  * Controls for the vision pipeline parameters.
  *
  * Adds image-type presets, work-area config, rotation/invert transforms,
- * and a real-time toggle on top of the existing parameter sliders.
+ * and parameter sliders.
  */
 export function ParameterPanel({
   params,
   onChange,
   disabled = false,
-  realtime,
-  onRealtimeChange,
   imageType,
   onImageTypeChange,
 }: ParameterPanelProps) {
   const presetChangeRef = useRef(false);
   const [workAreaOpen, setWorkAreaOpen] = useState(false);
-  const [workAreaPreset, setWorkAreaPreset] = useState('Custom');
 
-  useEffect(() => {
+  const workAreaPreset = useMemo(() => {
     const w = params.scara?.work_area_w_mm;
     const h = params.scara?.work_area_h_mm;
     const match = WORK_AREA_PRESET_NAMES.find((name) => {
       const dims = WORK_AREA_PRESETS[name];
       return dims.work_area_w_mm === w && dims.work_area_h_mm === h;
     });
-    setWorkAreaPreset(match ?? 'Custom');
+    return match ?? 'Custom';
   }, [params.scara?.work_area_w_mm, params.scara?.work_area_h_mm]);
 
   const handleImageParamChange = (
@@ -183,7 +212,6 @@ export function ParameterPanel({
   };
 
   const handleWorkAreaPreset = (preset: string) => {
-    setWorkAreaPreset(preset);
     if (preset !== 'Custom') {
       const dims = WORK_AREA_PRESETS[preset];
       onChange({
@@ -202,7 +230,6 @@ export function ParameterPanel({
   ) => {
     const parsed = parseFloat(raw);
     if (Number.isNaN(parsed)) return;
-    setWorkAreaPreset('Custom');
     onChange({
       scara: {
         ...params.scara,
@@ -226,28 +253,18 @@ export function ParameterPanel({
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-gray-200 p-4">
-      <div>
-        <div className="mb-1 flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">
-            Image type
-          </label>
-        </div>
+    <div className="space-y-5 rounded-lg border border-ci-rule bg-ci-surface p-4">
+      <div className="space-y-2">
+        <SectionLabel>Image type</SectionLabel>
         <div className="flex flex-wrap gap-2">
           {IMAGE_TYPES.map((type) => (
-            <button
+            <PillButton
               key={type}
-              type="button"
+              label={IMAGE_TYPE_LABELS[type]}
+              selected={imageType === type}
               onClick={() => handlePreset(type)}
               disabled={disabled}
-              className={`rounded-full px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                imageType === type
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {IMAGE_TYPE_LABELS[type]}
-            </button>
+            />
           ))}
         </div>
       </div>
@@ -262,7 +279,7 @@ export function ParameterPanel({
         defaultValue={DEFAULTS.scale}
         parse={parseFloat}
         format={(v) => v.toFixed(1)}
-        tooltip="Multiplica el tamaño final del dibujo. 1.0 = tamaño original."
+        tooltip="Scales the final drawing size. 1.0 keeps the original size."
         disabled={disabled}
         onChange={(scale) => handleImageParamChange({ scale })}
         onReset={() => handleImageParamChange({ scale: DEFAULTS.scale })}
@@ -278,7 +295,7 @@ export function ParameterPanel({
         defaultValue={DEFAULTS.threshold}
         parse={(value) => parseInt(value, 10)}
         format={(v) => String(v)}
-        tooltip="Sensibilidad de detección de bordes. Valores más bajos detectan más detalles."
+        tooltip="Edge detection sensitivity. Lower values capture more detail."
         disabled={disabled}
         onChange={(threshold) => handleImageParamChange({ threshold })}
         onReset={() => handleImageParamChange({ threshold: DEFAULTS.threshold })}
@@ -294,18 +311,18 @@ export function ParameterPanel({
         defaultValue={DEFAULTS.simplify_tolerance}
         parse={parseFloat}
         format={(v) => v.toFixed(1)}
-        tooltip="Controla el nivel de detalle de las trayectorias. Valores más altos producen líneas más suaves pero menos detalladas."
+        tooltip="Controls path detail. Higher values produce smoother but less detailed lines."
         disabled={disabled}
         onChange={(simplify_tolerance) => handleImageParamChange({ simplify_tolerance })}
         onReset={() => handleImageParamChange({ simplify_tolerance: DEFAULTS.simplify_tolerance })}
       />
 
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Tooltip text='Modo de preprocesado de la imagen. "balanced" usa detección automática de umbral.'>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Tooltip text='Image preprocessing mode. "balanced" uses automatic threshold detection.'>
             <label
               htmlFor="variant"
-              className="text-sm font-medium text-gray-700 cursor-help"
+              className="cursor-help font-body text-sm font-medium tracking-precise text-ci-text"
             >
               Variant
             </label>
@@ -314,11 +331,10 @@ export function ParameterPanel({
             type="button"
             onClick={() => handleImageParamChange({ variant: DEFAULTS.variant })}
             disabled={disabled}
-            className="ml-auto text-xs text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-            title="Reset to default"
+            className="ml-auto font-body text-2xs font-medium tracking-precise text-ci-muted transition-colors hover:text-ci-text disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
             aria-label="Reset variant to default"
           >
-            ↺
+            Reset
           </button>
         </div>
         <select
@@ -326,7 +342,7 @@ export function ParameterPanel({
           value={params.variant}
           onChange={(e) => handleImageParamChange({ variant: e.target.value as Variant })}
           disabled={disabled}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="block w-full rounded-md border border-ci-rule bg-ci-bg px-3 py-2 font-body text-sm text-ci-text focus-ring"
         >
           {VARIANTS.map((v) => (
             <option key={v} value={v}>
@@ -336,68 +352,52 @@ export function ParameterPanel({
         </select>
       </div>
 
-      <div className="space-y-3 rounded-lg border border-gray-200 p-3">
-        <h3 className="text-sm font-medium text-gray-700">Transform</h3>
+      <div className="space-y-3 rounded-lg border border-ci-rule bg-ci-bg p-3">
+        <SectionLabel>Transform</SectionLabel>
         <div className="flex flex-wrap gap-2">
           {ROTATIONS.map((deg) => (
-            <button
+            <PillButton
               key={deg}
-              type="button"
+              label={`${deg}°`}
+              selected={params.rotation_deg === deg}
               onClick={() => onChange({ rotation_deg: deg })}
               disabled={disabled}
-              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                params.rotation_deg === deg
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {deg}°
-            </button>
+            />
           ))}
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
+        <div className="flex flex-wrap gap-2">
+          <PillButton
+            label="Flip H"
+            selected={params.flip_h ?? false}
             onClick={() => onChange({ flip_h: !(params.flip_h ?? false) })}
             disabled={disabled}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-              params.flip_h
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            ↔ Flip H
-          </button>
-          <button
-            type="button"
+          />
+          <PillButton
+            label="Flip V"
+            selected={params.flip_v ?? false}
             onClick={() => onChange({ flip_v: !(params.flip_v ?? false) })}
             disabled={disabled}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-              params.flip_v
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            ↕ Flip V
-          </button>
+          />
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200">
+      <div className="rounded-lg border border-ci-rule bg-ci-bg">
         <button
           type="button"
           onClick={() => setWorkAreaOpen(!workAreaOpen)}
-          className="flex w-full items-center justify-between rounded-lg p-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="flex w-full items-center justify-between rounded-lg p-3 text-left font-body text-sm font-medium tracking-precise text-ci-text transition-colors hover:bg-ci-accent-subtle"
         >
-          Work area
-          <span aria-hidden="true">{workAreaOpen ? '▲' : '▼'}</span>
+          <SectionLabel>Work area</SectionLabel>
+          <span className="font-body text-2xs font-medium tracking-precise text-ci-muted">
+            {workAreaOpen ? 'Hide' : 'Show'}
+          </span>
         </button>
         {workAreaOpen && (
           <div className="space-y-3 p-3 pt-0">
             <div>
               <label
                 htmlFor="workAreaPreset"
-                className="block text-sm font-medium text-gray-700"
+                className="block font-body text-sm font-medium tracking-precise text-ci-text"
               >
                 Preset
               </label>
@@ -406,7 +406,7 @@ export function ParameterPanel({
                 value={workAreaPreset}
                 onChange={(e) => handleWorkAreaPreset(e.target.value)}
                 disabled={disabled}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm text-ci-text focus-ring"
               >
                 {[...WORK_AREA_PRESET_NAMES, 'Custom'].map((name) => (
                   <option key={name} value={name}>
@@ -419,7 +419,7 @@ export function ParameterPanel({
               <div>
                 <label
                   htmlFor="workAreaW"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
                   W (mm)
                 </label>
@@ -431,13 +431,13 @@ export function ParameterPanel({
                     handleWorkAreaDimension('work_area_w_mm', e.target.value)
                   }
                   disabled={disabled}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm tabular-nums text-ci-text focus-ring"
                 />
               </div>
               <div>
                 <label
                   htmlFor="workAreaH"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
                   H (mm)
                 </label>
@@ -449,7 +449,7 @@ export function ParameterPanel({
                     handleWorkAreaDimension('work_area_h_mm', e.target.value)
                   }
                   disabled={disabled}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm tabular-nums text-ci-text focus-ring"
                 />
               </div>
             </div>
@@ -457,7 +457,7 @@ export function ParameterPanel({
               <div>
                 <label
                   htmlFor="travelSpeed"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
                   Travel speed (mm/min)
                 </label>
@@ -468,13 +468,13 @@ export function ParameterPanel({
                   value={params.scara?.travel_speed ?? ''}
                   onChange={(e) => handleSpeed('travel_speed', e.target.value)}
                   disabled={disabled}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm tabular-nums text-ci-text focus-ring"
                 />
               </div>
               <div>
                 <label
                   htmlFor="drawSpeed"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block font-body text-sm font-medium tracking-precise text-ci-text"
                 >
                   Draw speed (mm/min)
                 </label>
@@ -485,7 +485,7 @@ export function ParameterPanel({
                   value={params.scara?.draw_speed ?? ''}
                   onChange={(e) => handleSpeed('draw_speed', e.target.value)}
                   disabled={disabled}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm tabular-nums text-ci-text focus-ring"
                 />
               </div>
             </div>
@@ -493,17 +493,11 @@ export function ParameterPanel({
         )}
       </div>
 
-      <Toggle
-        enabled={realtime}
-        onChange={onRealtimeChange}
-        label="Real-time generation"
-      />
-
       <button
         type="button"
         onClick={handleReset}
         disabled={disabled}
-        className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-md bg-ci-accent-subtle px-4 py-2 font-body text-sm font-semibold text-ci-accent transition-colors hover:bg-ci-accent hover:text-white disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
       >
         Reset defaults
       </button>
