@@ -27,26 +27,23 @@ CIPRA turns 2D images into geometric trajectories and emits standard G-Code for 
 
 ## Quickstart
 
-Install the Python tooling locally:
+Requirements: [Docker](https://docs.docker.com/get-docker/) + Docker Compose.
 
 ```bash
-make install
-```
-
-Run linting and tests:
-
-```bash
-make lint
-make test
-```
-
-Start the development environment with Docker:
-
-```bash
+git clone https://github.com/ItsRhyas/CIPRA.git
+cd CIPRA
 make docker-up
 ```
 
-The backend service listens on port `8000` once the full Django project is added.
+Open [http://localhost:3000](http://localhost:3000). The backend runs on port `8000`.
+
+### Local development (optional)
+
+```bash
+make install   # Python deps
+make lint      # Ruff
+make test      # pytest
+```
 
 ## Frontend
 
