@@ -75,6 +75,9 @@ export function GCodeViewer({
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
     // Work-area frame.
     const frameX = PADDING_PX;
     const frameY = PADDING_PX;

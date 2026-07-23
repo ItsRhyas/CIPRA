@@ -22,7 +22,8 @@ export function CanvasPreview({ imageUrl }: CanvasPreviewProps) {
     if (!ctx) return;
 
     if (!imageUrl) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       return;
     }
 
@@ -33,7 +34,8 @@ export function CanvasPreview({ imageUrl }: CanvasPreviewProps) {
       const height = width / aspectRatio;
       canvas.width = width;
       canvas.height = height;
-      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
       ctx.drawImage(image, 0, 0, width, height);
     };
     image.src = imageUrl;

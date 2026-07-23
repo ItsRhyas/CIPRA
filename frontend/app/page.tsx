@@ -182,8 +182,7 @@ export default function HomePage() {
                   })}
                 </div>
 
-                {/* Tab panels */}
-                <div className="min-h-[300px]">
+                <div className="min-h-[450px]">
                   {activeTab === 'preview' && (
                     <div role="tabpanel" id={panelId('preview')} aria-labelledby={tabId('preview')} tabIndex={0}>
                       <CanvasPreview imageUrl={previewUrl} />
