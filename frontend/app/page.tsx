@@ -126,7 +126,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col overflow-y-scroll">
+    <div className="flex min-h-screen flex-col">
       {/* ── Header ── */}
       <header className="border-b border-ci-rule bg-white">
         <div className="mx-auto max-w-5xl px-4 py-6">
