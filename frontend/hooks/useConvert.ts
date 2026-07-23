@@ -63,7 +63,6 @@ export function useConvert(): UseConvertReturn {
       const currentRequestId = requestIdRef.current;
 
       setState('uploading');
-      setResult(null);
       setError(null);
 
       try {

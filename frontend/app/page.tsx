@@ -33,6 +33,7 @@ export default function HomePage() {
   const baseId = useId();
   const tabId = (tab: TabId) => `${baseId}-tab-${tab}`;
   const panelId = (tab: TabId) => `${baseId}-panel-${tab}`;
+  const isManualConvertRef = useRef(false);
 
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
     preview: null,
@@ -81,7 +82,12 @@ export default function HomePage() {
   }, [file]);
 
   useEffect(() => {
-    if (state === 'success' && result?.gcode && result.gcode.trim().length > 0) {
+    if (
+      isManualConvertRef.current &&
+      state === 'success' &&
+      result?.gcode &&
+      result.gcode.trim().length > 0
+    ) {
       setActiveTab('viewer');
     }
   }, [state, result]);
@@ -89,6 +95,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!realtime || !file) return;
     const timer = setTimeout(() => {
+      isManualConvertRef.current = false;
       convert(file, params, t('error.unexpected'));
     }, 500);
     return () => clearTimeout(timer);
@@ -99,7 +106,15 @@ export default function HomePage() {
 
   const handleConvert = async () => {
     if (!file) return;
+    isManualConvertRef.current = true;
     await convert(file, params, t('error.unexpected'));
+  };
+
+  const handleFileSelect = (selectedFile: File | null) => {
+    if (selectedFile) {
+      reset();
+    }
+    setFile(selectedFile);
   };
 
   const handleReset = () => {
@@ -128,7 +143,7 @@ export default function HomePage() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8">
         <section className="space-y-8">
           {/* Dropzone */}
-          <ImageDropzone onSelect={setFile} disabled={isUploading} />
+          <ImageDropzone onSelect={handleFileSelect} disabled={isUploading} />
 
           {/* Canvas / viewer / params grid */}
           {file && (
