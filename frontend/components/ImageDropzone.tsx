@@ -124,14 +124,22 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
           className="hidden"
           disabled={disabled}
         />
-        {file ? (
-          <div className={disabled ? 'opacity-60' : ''}>
+        {disabled ? (
+          file ? (
+            <div>
+              <p className="font-body text-sm font-medium text-ci-text">{file.name}</p>
+              <p className="mt-1 font-body text-xs tracking-precise text-ci-muted">
+                {(file.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+          ) : (
+            <p className="font-body text-sm text-ci-muted">{t('dropzone.uploading')}</p>
+          )
+        ) : file ? (
+          <div>
             <p className="font-body text-sm font-medium text-ci-text">{file.name}</p>
             <p className="mt-1 font-body text-xs tracking-precise text-ci-muted">
               {(file.size / 1024 / 1024).toFixed(2)} MB
-              {disabled && (
-                <span className="ml-2 text-ci-accent">{t('dropzone.uploading')}</span>
-              )}
             </p>
           </div>
         ) : (
