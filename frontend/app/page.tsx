@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
 import { ImageType } from '@/lib/presets';
@@ -104,26 +104,26 @@ export default function HomePage() {
   const isUploading = state === 'uploading';
   const canConvert = file !== null && !isUploading;
 
-  const handleConvert = useCallback(async () => {
+  const handleConvert = async () => {
     if (!file) return;
     isManualConvertRef.current = true;
     await convert(file, params, t('error.unexpected'));
-  }, [file, params, convert, t]);
+  };
 
-  const handleFileSelect = useCallback((selectedFile: File | null) => {
+  const handleFileSelect = (selectedFile: File | null) => {
     if (selectedFile) {
       reset();
     }
     setFile(selectedFile);
-  }, [reset]);
+  };
 
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     setFile(null);
     setParams(DEFAULTS);
     setImageType('custom');
     setRealtime(false);
     reset();
-  }, [reset]);
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -257,12 +257,12 @@ export default function HomePage() {
       <footer className="sticky bottom-0 z-20 border-t border-ci-rule bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-4">
+            <LanguageSwitcher />
             {isUploading && (
               <p className="font-body text-sm text-ci-accent" aria-live="polite">
                 {t('status.generating')}
               </p>
             )}
-            <LanguageSwitcher />
           </div>
 
           <div className="flex items-center gap-3">

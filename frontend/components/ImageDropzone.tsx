@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n/useT';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -12,7 +12,7 @@ export interface ImageDropzoneProps {
   disabled?: boolean;
 }
 
-export const ImageDropzone = memo(function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps) {
+export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps) {
   const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,24 +124,15 @@ export const ImageDropzone = memo(function ImageDropzone({ onSelect, disabled = 
           className="hidden"
           disabled={disabled}
         />
-        {disabled ? (
-          file ? (
-            <div>
-              <p className="font-body text-sm font-medium text-ci-text">{file.name}</p>
-              <p className="mt-1 font-body text-xs tracking-precise text-ci-muted">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-          ) : (
-            <p className="font-body text-sm text-ci-muted">{t('dropzone.uploading')}</p>
-          )
-        ) : file ? (
+        {file ? (
           <div>
             <p className="font-body text-sm font-medium text-ci-text">{file.name}</p>
             <p className="mt-1 font-body text-xs tracking-precise text-ci-muted">
               {(file.size / 1024 / 1024).toFixed(2)} MB
             </p>
           </div>
+        ) : disabled ? (
+          <p className="font-body text-sm text-ci-muted">{t('dropzone.uploading')}</p>
         ) : (
           <div>
             <p className="font-body text-sm font-medium text-ci-text">
@@ -165,4 +156,4 @@ export const ImageDropzone = memo(function ImageDropzone({ onSelect, disabled = 
       )}
     </div>
   );
-});
+}
