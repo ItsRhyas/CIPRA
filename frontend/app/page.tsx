@@ -258,7 +258,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
-            {isUploading && (
+            {isUploading && !realtime && (
               <p className="font-body text-sm text-ci-accent" aria-live="polite">
                 {t('status.generating')}
               </p>
@@ -281,7 +281,7 @@ export default function HomePage() {
               disabled={!canConvert}
               className="rounded-md bg-ci-accent px-5 py-2 font-body text-sm font-semibold text-white transition-colors hover:bg-ci-accent-hover disabled:cursor-not-allowed disabled:opacity-40 focus-ring"
             >
-              {isUploading ? t('button.converting') : t('button.convert')}
+              {isUploading && !realtime ? t('button.converting') : t('button.convert')}
             </button>
           </div>
         </div>
