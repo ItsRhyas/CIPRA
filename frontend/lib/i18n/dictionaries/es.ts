@@ -5,7 +5,7 @@ export const es: Dictionary = {
   'app.tagline': 'Convertidor Inteligente de Píxeles a Rutas Automatizadas',
 
   'tabs.preview': 'Vista previa',
-  'tabs.paths': 'Trayectorias',
+  'tabs.viewer': 'Trayectorias',
   'tabs.gcode': 'G-Code',
   'tabs.views': 'Vistas de conversión',
 

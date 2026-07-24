@@ -5,7 +5,7 @@ export const en: Dictionary = {
   'app.tagline': 'Converter for Intelligent Pixel Route Automation',
 
   'tabs.preview': 'Preview',
-  'tabs.paths': 'Paths',
+  'tabs.viewer': 'Paths',
   'tabs.gcode': 'G-Code',
   'tabs.views': 'Conversion views',
 
