@@ -2,7 +2,7 @@ import { Dictionary } from '../types';
 
 export const es: Dictionary = {
   'app.title': 'CIPRA',
-  'app.tagline': 'De píxel a trayectoria, con precisión',
+  'app.tagline': 'Convertidor Inteligente de Píxeles a Rutas Automatizadas',
 
   'tabs.preview': 'Vista previa',
   'tabs.paths': 'Trayectorias',
