@@ -9,12 +9,15 @@ dependencies = [
     "opencv-python-headless>=4.8",
     "numpy>=1.24",
     "Pillow>=10.0",
+    "channels>=4.2,<5",
+    "daphne>=4.1.2,<5",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4",
     "pytest-django>=4.7",
+    "pytest-asyncio>=0.24,<2",
     "ruff>=0.4.0",
 ]
 
@@ -29,6 +32,7 @@ packages = ["."]
 minversion = "7.0"
 addopts = "-q"
 DJANGO_SETTINGS_MODULE = "cipra_api.settings"
+asyncio_mode = "auto"
 
 [tool.ruff]
 target-version = "py311"
