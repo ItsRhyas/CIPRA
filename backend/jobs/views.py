@@ -2,22 +2,50 @@
 
 from __future__ import annotations
 
+import logging
 import time
+import uuid
 from typing import Any
 
 import numpy as np
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from PIL import Image
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
+from cipra_api.ws import protocol
 from gcode.config import ScaraConfig
 from gcode.formatter import format_gcode
+from jobs.latest import latest
 from jobs.serializers import ConvertRequestSerializer
 from pipeline.orchestrator import PipelineOrchestrator
 from pipeline.types import ConvertResponse, ConvertResponseMeta
+
+logger = logging.getLogger(__name__)
+
+GCODE_GROUP = "gcode"
+
+
+def _has_subscribers() -> bool:
+    """Return True when at least one client is connected to the gcode group.
+
+    Uses the explicit subscriber counter (InMemory layer has no group_size).
+    """
+    from jobs.latest import subscribers
+
+    return subscribers.value() > 0
+
+
+def _publish_to_group(envelope: dict[str, Any]) -> None:
+    """Fan out an envelope to every connected gcode subscriber."""
+    layer = get_channel_layer()
+    async_to_sync(layer.group_send)(
+        GCODE_GROUP, {"type": "gcode.message", "envelope": envelope}
+    )
 
 
 class ConvertView(APIView):
@@ -45,6 +73,18 @@ class ConvertView(APIView):
         paths = _coordinates_to_paths(pipeline_output.coordinates)
         format_result = format_gcode(paths, scara_config)
 
+        if format_result.gcode:
+            envelope = protocol.make_gcode_ready(
+                id=str(uuid.uuid4()),
+                name=image_file.name or "converted",
+                payload=format_result.gcode,
+            )
+            latest.set(envelope)
+            if _has_subscribers():
+                _publish_to_group(envelope)
+            else:
+                logger.warning("Publish suppressed: no client connected (E_EMPTY_PAYLOAD)")
+
         warnings = [warning.message for warning in pipeline_output.warnings]
         warnings.extend(format_result.warnings)
 
@@ -67,6 +107,37 @@ class ConvertView(APIView):
                     "elapsed_ms": response.meta.elapsed_ms,
                 },
                 "warnings": response.warnings,
+            }
+        )
+
+
+class PublishGcodeView(APIView):
+    """POST /api/v1/gcode/publish/ — re-publish the current snapshot.
+
+    Idempotent: re-sends the same envelope (and returns its id) regardless of
+    how many times it is called. When no subscriber is connected the re-publish
+    is a no-op (R6/S5).
+    """
+
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        """Re-broadcast the current snapshot to connected subscribers."""
+        envelope = latest.get()
+        if envelope is None:
+            return Response({"error": "E_NO_JOB"}, status=404)
+
+        has_client = _has_subscribers()
+        if has_client:
+            _publish_to_group(envelope)
+        else:
+            logger.info("Re-publish suppressed: no client connected (no-op)")
+
+        return Response(
+            {
+                "published": has_client,
+                "connected": has_client,
+                "job_id": envelope["id"],
             }
         )
 
