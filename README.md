@@ -48,6 +48,20 @@ make docker-up
 
 The backend service listens on port `8000` once the full Django project is added.
 
+### WebSocket / ASGI (daphne)
+
+The backend can serve HTTP **and** WebSocket with daphne (required for the
+G-code live-publish channels). Local dev command:
+
+```bash
+cd backend
+daphne -b 0.0.0.0 -p 8000 cipra_api.asgi:application
+```
+
+Docker Compose already starts the backend with this command. `manage.py
+runserver` remains an HTTP-only fallback (it does not serve the `/ws/*`
+endpoints).
+
 ## Frontend
 
 The Next.js 14 frontend lives in `frontend/` and provides the image-to-GCode converter UI.
