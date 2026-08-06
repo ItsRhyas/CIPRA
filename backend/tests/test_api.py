@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+
+from gcode.formatter import FormatResult
 
 
 def _image_file(
@@ -138,3 +142,47 @@ def test_convert_valid_image_produces_gcode_without_stub_warnings(
     assert "gcode" in data
     assert "M3" in data["gcode"]
     assert "not yet implemented" not in " ".join(data["warnings"])
+
+
+@pytest.mark.django_db
+def test_convert_empty_payload_suppresses_publish(
+    api_client,
+    sample_image_bytes,
+    convert_params,
+    caplog,
+):
+    """S3/R3: empty format result does not publish and logs E_EMPTY_PAYLOAD.
+
+    The real formatter always returns a non-empty preamble, so the empty-payload
+    branch is exercised by mocking ``format_gcode`` to return an empty result.
+    The HTTP response shape and status are unchanged; the snapshot store is left
+    pristine.
+    """
+    from jobs.latest import latest
+
+    fake_result = FormatResult(gcode="", warnings=["no paths"])
+    prior = latest.get()  # snapshot any state left by earlier tests.
+    with patch("jobs.views.format_gcode", return_value=fake_result):
+        response = api_client.post(
+            "/api/v1/convert/",
+            {
+                "image": _image_file(sample_image_bytes),
+                "params": convert_params,
+                "variant": "fast",
+            },
+            format="multipart",
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["gcode"] == ""
+    assert "meta" in data
+    assert "warnings" in data
+    assert isinstance(data["meta"]["stages_run"], list)
+
+    # S3/R3: no envelope is built or stored; the snapshot is untouched.
+    assert latest.get() is prior
+
+    assert any(
+        "E_EMPTY_PAYLOAD" in record.message for record in caplog.records
+    )

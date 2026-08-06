@@ -83,7 +83,11 @@ class ConvertView(APIView):
             if _has_subscribers():
                 _publish_to_group(envelope)
             else:
-                logger.warning("Publish suppressed: no client connected (E_EMPTY_PAYLOAD)")
+                logger.warning("Publish suppressed: no client connected (E_NO_CLIENT)")
+        else:
+            logger.warning(
+                "Publish suppressed: empty gcode payload (E_EMPTY_PAYLOAD)"
+            )
 
         warnings = [warning.message for warning in pipeline_output.warnings]
         warnings.extend(format_result.warnings)
