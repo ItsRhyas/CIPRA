@@ -126,7 +126,7 @@ describe('publish() · error handling on 4xx / 404', () => {
 
   it('raises an ApiError on an arbitrary 4xx/5xx response', async () => {
     mockFetchError(500, { error: 'E_NO_JOB' });
-    const err = await publish().catch((e: ApiError) => e);
+    const err = (await publish().catch((e: ApiError) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.status).toBe(500);
     expect(err.body).toEqual({ error: 'E_NO_JOB' });
