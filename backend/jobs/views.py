@@ -79,11 +79,9 @@ class ConvertView(APIView):
                 name=image_file.name or "converted",
                 payload=format_result.gcode,
             )
+            # Store the latest snapshot, but do NOT fan out: publishing is
+            # deferred to the explicit publish endpoint (R6/S4 revision).
             latest.set(envelope)
-            if _has_subscribers():
-                _publish_to_group(envelope)
-            else:
-                logger.warning("Publish suppressed: no client connected (E_NO_CLIENT)")
         else:
             logger.warning(
                 "Publish suppressed: empty gcode payload (E_EMPTY_PAYLOAD)"
@@ -134,6 +132,9 @@ class PublishGcodeView(APIView):
         has_client = _has_subscribers()
         if has_client:
             _publish_to_group(envelope)
+            # Only a successful broadcast marks the snapshot as published
+            # (drives replay gating for future subscribers).
+            latest.mark_published()
         else:
             logger.info("Re-publish suppressed: no client connected (no-op)")
 

@@ -13,21 +13,43 @@ from typing import Any
 
 
 class SnapshotStore:
-    """Latest-only store of the current G-Code envelope, guarded by a lock."""
+    """Latest-only store of the current G-Code envelope, guarded by a lock.
+
+    Each stored job carries a ``published`` flag: ``False`` right after a new
+    convert stores a job, ``True`` only after an explicit publish broadcast.
+    Replay on WS connect is gated on this flag, so a pending-but-unpublished
+    job is never delivered to subscribers.
+    """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._latest: dict[str, Any] | None = None
+        self._published = False
 
     def set(self, envelope: dict[str, Any] | None) -> None:
-        """Overwrite the current snapshot (latest-only)."""
+        """Overwrite the current snapshot (latest-only).
+
+        Storing a new job also resets ``published`` to ``False``: it must be
+        explicitly published before subscribers receive it.
+        """
         with self._lock:
             self._latest = envelope
+            self._published = False
 
     def get(self) -> dict[str, Any] | None:
-        """Return the current snapshot envelope, or None if none published."""
+        """Return the current snapshot envelope, or None if none stored."""
         with self._lock:
             return self._latest
+
+    def mark_published(self) -> None:
+        """Mark the current snapshot as explicitly published."""
+        with self._lock:
+            self._published = True
+
+    def is_published(self) -> bool:
+        """Return True only when a snapshot exists and was explicitly published."""
+        with self._lock:
+            return self._latest is not None and self._published
 
 
 # Module-level single source of truth (publisher).

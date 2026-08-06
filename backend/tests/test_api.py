@@ -186,3 +186,45 @@ def test_convert_empty_payload_suppresses_publish(
     assert any(
         "E_EMPTY_PAYLOAD" in record.message for record in caplog.records
     )
+
+
+@pytest.mark.django_db
+def test_convert_does_not_broadcast_and_stores_unpublished(
+    api_client,
+    sample_image_bytes,
+    convert_params,
+    monkeypatch,
+):
+    """S4/R7 revision: converting an image must NOT fan out to subscribers.
+
+    Convert only stores the latest snapshot (unpublished). The publish
+    endpoint — not the convert — is the sole fan-out trigger. We prove this by
+    asserting _publish_to_group is never called, even with a subscriber present,
+    and that the stored snapshot is unpublished.
+    """
+    from unittest.mock import MagicMock
+
+    from jobs import views
+    from jobs.latest import latest
+
+    monkeypatch.setattr(views, "_has_subscribers", lambda: True)
+    publish = MagicMock()
+    monkeypatch.setattr(views, "_publish_to_group", publish)
+
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    # Convert must NOT trigger fan-out.
+    publish.assert_not_called()
+    # The snapshot is stored, but marked unpublished (needs the button).
+    snap = latest.get()
+    assert snap is not None
+    assert latest.is_published() is False

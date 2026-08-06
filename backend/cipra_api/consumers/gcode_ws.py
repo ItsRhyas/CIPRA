@@ -1,9 +1,11 @@
 """WebSocket consumer for the ``/ws/gcode/`` publisher channel.
 
 On connect the consumer joins the ``gcode`` group and replays the current
-snapshot (or sends a ``no-job`` notice when none is held). Incoming
-``gcode.ready`` envelopes are validated; an unsupported version is ignored (NOT
-queued) so a later valid publish still fans out to connected subscribers.
+snapshot ONLY when it was explicitly published (``published`` flag set by the
+publish endpoint); a pending-but-unpublished job is NOT delivered, so the
+client gets the usual ``no-job`` notice. Incoming ``gcode.ready`` envelopes are
+validated; an unsupported version is ignored (NOT queued) so a later valid
+publish still fans out to connected subscribers.
 """
 
 from __future__ import annotations
@@ -29,11 +31,11 @@ class GcodeConsumer(AsyncJsonWebsocketConsumer):
         await self._replay_snapshot()
 
     async def _replay_snapshot(self) -> None:
-        snapshot = latest.get()
-        if snapshot is None:
-            await self.send_json(protocol.build_nojob())
+        if latest.is_published():
+            await self.send_json(latest.get())
         else:
-            await self.send_json(snapshot)
+            # Pending-but-unpublished job (or none at all): behave as today.
+            await self.send_json(protocol.build_nojob())
 
     async def receive_json(self, content: dict[str, Any], **kwargs: Any) -> None:
         """Validate incoming envelopes; ACKs do not break the live channel.

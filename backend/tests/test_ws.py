@@ -42,12 +42,13 @@ async def _connect() -> WebsocketCommunicator:
 
 
 async def _group_send(envelope: dict) -> None:
-    """Mirror the real publish path: set the snapshot and fan it out.
+    """Mirror the real publish path: set the snapshot, mark published, fan out.
 
     Must be awaited (not async_to_sync) because the WebsocketCommunicator
     consumer lives on the same event loop as the test.
     """
     latest.set(envelope)
+    latest.mark_published()
     layer = get_channel_layer()
     await layer.group_send("gcode", {"type": "gcode.message", "envelope": envelope})
 
@@ -58,9 +59,10 @@ async def _group_send(envelope: dict) -> None:
 
 
 class TestSnapshotReplay:
-    async def test_connect_with_snapshot_replays_ready(self) -> None:
+    async def test_connect_with_published_snapshot_replays_ready(self) -> None:
         envelope = make_ready(_uuid(), "logo.svg", "G21 G90\nG0 X1 Y2\n")
         latest.set(envelope)
+        latest.mark_published()
 
         communicator = await _connect()
         try:
@@ -71,7 +73,37 @@ class TestSnapshotReplay:
         finally:
             await communicator.disconnect()
 
+    async def test_connect_with_pending_job_does_not_replay_ready(self) -> None:
+        """A pending-but-unpublished job is NOT replayed on connect."""
+        envelope = make_ready(_uuid(), "pending.png", "G21 G90\nG0 X1 Y2\n")
+        latest.set(envelope)  # converted, but never explicitly published
+
+        communicator = await _connect()
+        try:
+            received = await communicator.receive_json_from(timeout=1)
+            assert received["type"] == "no-job"
+        finally:
+            await communicator.disconnect()
+
     async def test_connect_without_snapshot_sends_nojob(self) -> None:
+        communicator = await _connect()
+        try:
+            received = await communicator.receive_json_from(timeout=1)
+            assert received["type"] == "no-job"
+        finally:
+            await communicator.disconnect()
+
+    async def test_replay_after_new_convert_resets_published(self) -> None:
+        """A new convert resets published; a previously published job is NOT
+        replayed after a newer pending convert."""
+        published = make_ready(_uuid(), "job1.png", "G1 X1 Y1")
+        latest.set(published)
+        latest.mark_published()
+
+        # New convert stores a newer job (pending, unpublished).
+        newer = make_ready(_uuid(), "job2.png", "G2 X2 Y2")
+        latest.set(newer)
+
         communicator = await _connect()
         try:
             received = await communicator.receive_json_from(timeout=1)
@@ -192,3 +224,5 @@ class TestPublishApi:
         assert resp.json()["connected"] is True
         assert resp.json()["published"] is True
         assert resp.json()["job_id"] == env["id"]
+        # Successful broadcast marks the snapshot as published for replay.
+        assert latest.is_published() is True
