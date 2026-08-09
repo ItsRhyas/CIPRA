@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
+import { useT } from '@/lib/i18n/useT';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_SIZE_MB = 10;
@@ -11,12 +12,8 @@ export interface ImageDropzoneProps {
   disabled?: boolean;
 }
 
-/**
- * Drag-and-drop / click-to-pick image selector with client-side validation.
- *
- * Validates type (PNG/JPEG/WebP) and size (<= 10 MB) before notifying the parent.
- */
 export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps) {
+  const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -79,6 +76,17 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
     }
   }, [disabled]);
 
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        inputRef.current?.click();
+      }
+    },
+    [disabled]
+  );
+
   const onChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selected = e.target.files?.[0];
@@ -93,15 +101,16 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
     <div className="space-y-2">
       <div
         onClick={onClick}
+        onKeyDown={onKeyDown}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         className={[
-          'rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+          'rounded-lg border-2 border-dashed p-10 text-center transition-colors',
           isDragOver
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400',
-          disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+            ? 'border-ci-accent bg-ci-accent-subtle'
+            : 'border-ci-rule hover:border-ci-rule-strong',
+          disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
         ].join(' ')}
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -115,31 +124,34 @@ export function ImageDropzone({ onSelect, disabled = false }: ImageDropzoneProps
           className="hidden"
           disabled={disabled}
         />
-        {disabled ? (
-          <p className="text-gray-500">Uploading...</p>
-        ) : file ? (
+        {file ? (
           <div>
-            <p className="font-medium text-gray-900">{file.name}</p>
-            <p className="text-sm text-gray-500">
+            <p className="font-body text-sm font-medium text-ci-text">{file.name}</p>
+            <p className="mt-1 font-body text-xs tracking-precise text-ci-muted">
               {(file.size / 1024 / 1024).toFixed(2)} MB
             </p>
           </div>
+        ) : disabled ? (
+          <p className="font-body text-sm text-ci-muted">{t('dropzone.uploading')}</p>
         ) : (
           <div>
-            <p className="font-medium text-gray-900">
-              Drag & drop an image here, or click to select
+            <p className="font-body text-sm font-medium text-ci-text">
+              {t('dropzone.empty')}
             </p>
-            <p className="mt-1 text-sm text-gray-500">
-              PNG, JPEG, or WebP up to 10 MB
+            <p className="mt-1 font-body text-xs tracking-precise text-ci-muted">
+              {t('dropzone.formats')}
             </p>
           </div>
         )}
       </div>
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p
+          className="rounded-md bg-ci-danger-bg px-2 py-1.5 font-body text-xs text-ci-danger"
+          role="alert"
+        >
           {error === 'unsupported type'
-            ? 'Unsupported file type. Please use PNG, JPEG, or WebP.'
-            : 'File too large. Maximum size is 10 MB.'}
+            ? t('dropzone.error.type')
+            : t('dropzone.error.size')}
         </p>
       )}
     </div>

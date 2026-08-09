@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -228,3 +229,23 @@ def test_convert_does_not_broadcast_and_stores_unpublished(
     snap = latest.get()
     assert snap is not None
     assert latest.is_published() is False
+
+
+def test_convert_invalid_rotation_deg_returns_400(api_client, sample_image_bytes):
+    """A rotation_deg outside the allowed enum returns 400."""
+    params = json.dumps(
+        {
+            "scale": 1.0,
+            "threshold": 127,
+            "simplify_tolerance": 1.0,
+            "rotation_deg": 45,
+        }
+    )
+    response = api_client.post(
+        "/api/v1/convert/",
+        {"image": _image_file(sample_image_bytes), "params": params, "variant": "fast"},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+    assert "rotation_deg" in str(response.json()).lower()

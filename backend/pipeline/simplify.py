@@ -13,6 +13,7 @@ def simplify(
     config: ScaraConfig,
     tolerance: float = 2.0,
     image_shape: tuple[int, ...] = (0, 0),
+    scale: float = 1.0,
 ) -> StageResult:
     """
     Simplify contours with Douglas-Peucker and convert pixels to millimeters.
@@ -24,6 +25,7 @@ def simplify(
     3. Convert pixel coordinates to millimeters using the image dimensions and
        the configured work area.
     4. Flip the Y axis so the origin is at the bottom-left of the work area.
+    5. Multiply millimeter coordinates by ``scale``.
 
     If OpenCV is unavailable, an empty coordinate list and an ``opencv_missing``
     warning are returned.
@@ -70,8 +72,11 @@ def simplify(
         )
 
     image_h, image_w = image_shape[0], image_shape[1]
-    scale_x = config.work_area_w_mm / image_w
-    scale_y = config.work_area_h_mm / image_h
+    fit = min(config.work_area_w_mm / image_w, config.work_area_h_mm / image_h)
+    draw_w_mm = image_w * fit
+    draw_h_mm = image_h * fit
+    offset_x_mm = (config.work_area_w_mm - draw_w_mm) / 2.0
+    offset_y_mm = (config.work_area_h_mm - draw_h_mm) / 2.0
 
     simplified_paths: list[list[tuple[float, float]]] = []
     for path in contours:
@@ -83,14 +88,16 @@ def simplify(
 
     ordered_paths = _nn_tsp_order(simplified_paths)
 
-    coordinates: list[tuple[float, float]] = []
+    mm_paths: list[list[tuple[float, float]]] = []
     for path in ordered_paths:
+        mm_path: list[tuple[float, float]] = []
         for px, py in path:
-            mm_x = px * scale_x
-            mm_y = config.work_area_h_mm - (py * scale_y)
-            coordinates.append((mm_x, mm_y))
+            mm_x = (px * fit + offset_x_mm) * scale
+            mm_y = (config.work_area_h_mm - offset_y_mm - (py * fit)) * scale
+            mm_path.append((mm_x, mm_y))
+        mm_paths.append(mm_path)
 
-    return StageResult(data=coordinates, warnings=[], stage_name="simplify")
+    return StageResult(data=mm_paths, warnings=[], stage_name="simplify")
 
 
 def _centroid(path: list[tuple[float, float]]) -> tuple[float, float]:

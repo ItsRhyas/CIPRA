@@ -8,6 +8,15 @@ import { ConvertParams, Variant } from '@/lib/types';
 export const DEFAULTS: ConvertParams & { variant: Variant } = {
   scale: 1.0,
   threshold: 128,
-  simplify_tolerance: 2.0,
+  simplify_tolerance: 1.0,
   variant: 'balanced',
+  scara: {
+    work_area_w_mm: 210,
+    work_area_h_mm: 297,
+    travel_speed: undefined,
+    draw_speed: undefined,
+  },
+  rotation_deg: 0,
+  flip_h: false,
+  flip_v: false,
 };

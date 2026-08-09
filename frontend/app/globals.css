@@ -1,3 +1,79 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* Base grid cell — shared by CSS utilities and canvas grid rendering. */
+  --grid-cell: 24px;
+}
+
+/* ---------------------------------------------------------------
+ * Coordinate grid background — 10mm equivalent pattern.
+ * Uses a CSS background-image grid at a visual scale that evokes
+ * graph paper without competing with content. Opacity is set
+ * deliberately low so the grid is felt, not read.
+ * --------------------------------------------------------------- */
+@layer utilities {
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(30 58 95 / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(30 58 95 / 0.06) 1px, transparent 1px);
+    background-size: var(--grid-cell) var(--grid-cell);
+  }
+
+  .bg-grid-subtle {
+    background-image:
+      linear-gradient(to right, rgb(30 58 95 / 0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(30 58 95 / 0.025) 1px, transparent 1px);
+    background-size: var(--grid-cell) var(--grid-cell);
+  }
+
+  /* Inset ring for focused interactive elements — replaces default
+     browser outlines with a single consistent treatment. */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ci-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ci-bg;
+  }
+}
+
+/* ---------------------------------------------------------------
+ * Base resets — minimal, only what Tailwind preflight doesn't cover.
+ * --------------------------------------------------------------- */
+@layer base {
+  /* Visible keyboard focus indicator for all interactive elements */
+  :focus-visible {
+    outline: 2px solid #1E3A5F;
+    outline-offset: 2px;
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------
+ * Range input styling — unified cross-browser treatment.
+ * --------------------------------------------------------------- */
+@layer components {
+  input[type='range'] {
+    @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-ci-rule;
+  }
+
+  input[type='range']::-webkit-slider-thumb {
+    @apply h-4 w-4 appearance-none rounded-full border-2 border-ci-accent bg-white shadow-sm transition-shadow hover:shadow-md;
+  }
+
+  input[type='range']::-moz-range-thumb {
+    @apply h-4 w-4 rounded-full border-2 border-ci-accent bg-white shadow-sm;
+  }
+
+  input[type='range']:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+}

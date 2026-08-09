@@ -1,23 +1,32 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useT } from '@/lib/i18n/useT';
+import { EmptyState } from '@/components/EmptyState';
 
 export interface GCodeOutputProps {
   gcode: string | null;
 }
 
-/**
- * Display generated G-Code with copy-to-clipboard and .gcode download actions.
- *
- * Shows an instructional empty state when no G-Code is available yet.
- */
+type CopyState = 'idle' | 'copied' | 'error';
+
 export function GCodeOutput({ gcode }: GCodeOutputProps) {
+  const t = useT();
+  const [copyState, setCopyState] = useState<CopyState>('idle');
+
+  useEffect(() => {
+    if (copyState === 'idle') return;
+    const timer = setTimeout(() => setCopyState('idle'), 1500);
+    return () => clearTimeout(timer);
+  }, [copyState]);
+
   const handleCopy = async () => {
     if (!gcode) return;
     try {
       await navigator.clipboard.writeText(gcode);
+      setCopyState('copied');
     } catch {
-      // Clipboard access may be denied; fail silently.
+      setCopyState('error');
     }
   };
 
@@ -34,33 +43,40 @@ export function GCodeOutput({ gcode }: GCodeOutputProps) {
     URL.revokeObjectURL(url);
   };
 
+  const copyLabel =
+    copyState === 'copied'
+      ? t('gcode.copied')
+      : copyState === 'error'
+        ? t('gcode.copyFailed')
+        : t('gcode.copy');
+
   if (!gcode) {
-    return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-gray-500">
-        Convert an image to generate G-Code
-      </div>
-    );
+    return <EmptyState>{t('gcode.empty')}</EmptyState>;
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex gap-2">
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-ci-accent px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-ci-accent-hover focus-ring"
         >
-          Copy
+          {copyLabel}
         </button>
         <button
           type="button"
           onClick={handleDownload}
-          className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
+          className="rounded-md border border-ci-rule bg-ci-surface px-4 py-2 font-body text-sm font-medium text-ci-text transition-colors hover:bg-ci-accent-subtle focus-ring"
         >
-          Download .gcode
+          {t('gcode.download')}
         </button>
       </div>
-      <pre className="max-h-96 overflow-auto rounded-lg border border-gray-200 bg-gray-900 p-4 font-mono text-sm text-gray-100">
+      <div aria-live="polite" className="sr-only">
+        {copyState === 'copied' && t('gcode.copyAria')}
+        {copyState === 'error' && t('gcode.copyFailedAria')}
+      </div>
+      <pre className="max-h-96 overflow-auto rounded-lg border border-ci-rule bg-[#131417] p-5 font-mono text-xs leading-relaxed text-[#DDE1E6]">
         {gcode}
       </pre>
     </div>

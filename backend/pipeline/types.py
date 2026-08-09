@@ -14,9 +14,12 @@ class ConvertParams:
 
     scale: float = 1.0
     threshold: int = 127
-    simplify_tolerance: float = 2.0
+    simplify_tolerance: float = 1.0
     variant: str = "balanced"
     scara: ScaraConfig | None = None
+    rotation_deg: int = 0
+    flip_h: bool = False
+    flip_v: bool = False
 
 
 @dataclass
@@ -79,9 +82,14 @@ class StageResult:
 
 @dataclass
 class PipelineOutput:
-    """Final aggregated output of the vision pipeline."""
+    """Final aggregated output of the vision pipeline.
 
-    coordinates: list[tuple[float, float]] = field(default_factory=list)
+    ``coordinates`` is a list of drawing paths. Each path is a list of
+    ``(x, y)`` points in millimeters. Path boundaries are preserved so that
+    travel moves (G0) are only emitted between disconnected contours.
+    """
+
+    coordinates: list[list[tuple[float, float]]] = field(default_factory=list)
     warnings: list[Warning] = field(default_factory=list)
     stages_run: list[str] = field(default_factory=list)
 

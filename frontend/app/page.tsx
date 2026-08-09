@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
 import { DEFAULTS } from '@/lib/scara-defaults';
+import { ImageType } from '@/lib/presets';
+import { useT } from '@/lib/i18n/useT';
 import { useConvert } from '@/hooks/useConvert';
 import { useGcodeWs } from '@/hooks/useGcodeWs';
 import { ApiError } from '@/lib/api';
@@ -12,35 +14,87 @@ import { GCodeViewer } from '@/components/GCodeViewer';
 import { ParameterPanel } from '@/components/ParameterPanel';
 import { GCodeOutput } from '@/components/GCodeOutput';
 import { WarningsList } from '@/components/WarningsList';
+import { Toggle } from '@/components/Toggle';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { ConnectionBadge } from '@/components/ConnectionBadge';
 
 type TabId = 'preview' | 'viewer' | 'gcode';
 
-const TAB_LABELS: Record<TabId, string> = {
-  preview: 'Vista previa',
-  viewer: 'Visualizador',
-  gcode: 'Código G',
-};
+const TAB_IDS: TabId[] = ['preview', 'viewer', 'gcode'];
 
 type PublishFeedback = 'success' | 'queued' | 'error';
 
 export default function HomePage() {
+  const t = useT();
   const [file, setFile] = useState<File | null>(null);
   const [params, setParams] = useState<ConvertParams & { variant: Variant }>(
     DEFAULTS
   );
   const [activeTab, setActiveTab] = useState<TabId>('preview');
+  const [imageType, setImageType] = useState<ImageType>('custom');
+  const [realtime, setRealtime] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [publishFeedback, setPublishFeedback] = useState<PublishFeedback | null>(
     null
   );
   const [publishMessage, setPublishMessage] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const { state, result, error, imageUrl, convert, reset } = useConvert();
+  const { state, result, error, convert, reset } = useConvert();
   const { status, clients, publish } = useGcodeWs();
+  const baseId = useId();
+  const tabId = (tab: TabId) => `${baseId}-tab-${tab}`;
+  const panelId = (tab: TabId) => `${baseId}-panel-${tab}`;
+  const isManualConvertRef = useRef(false);
 
-  // Auto-switch to the G-Code viewer when a new conversion completes.
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
+    preview: null,
+    viewer: null,
+    gcode: null,
+  });
+
+  const setTabRef = (tab: TabId) => (el: HTMLButtonElement | null) => {
+    tabRefs.current[tab] = el;
+  };
+
+  const focusTab = (tab: TabId) => {
+    tabRefs.current[tab]?.focus();
+  };
+
+  const handleTabKeyDown = (
+    e: React.KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) => {
+    let nextIndex = index;
+    if (e.key === 'ArrowLeft') {
+      nextIndex = index > 0 ? index - 1 : TAB_IDS.length - 1;
+    } else if (e.key === 'ArrowRight') {
+      nextIndex = index < TAB_IDS.length - 1 ? index + 1 : 0;
+    } else if (e.key === 'Home') {
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      nextIndex = TAB_IDS.length - 1;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    const nextTab = TAB_IDS[nextIndex];
+    setActiveTab(nextTab);
+    requestAnimationFrame(() => focusTab(nextTab));
+  };
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
   useEffect(() => {
     if (
+      isManualConvertRef.current &&
       state === 'success' &&
       result?.gcode &&
       result.gcode.trim().length > 0
@@ -48,6 +102,15 @@ export default function HomePage() {
       setActiveTab('viewer');
     }
   }, [state, result]);
+
+  useEffect(() => {
+    if (!realtime || !file) return;
+    const timer = setTimeout(() => {
+      isManualConvertRef.current = false;
+      convert(file, params, t('error.unexpected'));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [file, params, realtime, convert, t]);
 
   const isUploading = state === 'uploading';
   const canConvert = file !== null && !isUploading;
@@ -60,12 +123,22 @@ export default function HomePage() {
 
   const handleConvert = async () => {
     if (!file) return;
-    await convert(file, params);
+    isManualConvertRef.current = true;
+    await convert(file, params, t('error.unexpected'));
+  };
+
+  const handleFileSelect = (selectedFile: File | null) => {
+    if (selectedFile) {
+      reset();
+    }
+    setFile(selectedFile);
   };
 
   const handleReset = () => {
     setFile(null);
     setParams(DEFAULTS);
+    setImageType('custom');
+    setRealtime(false);
     reset();
     setPublishFeedback(null);
     setPublishMessage(null);
@@ -79,12 +152,10 @@ export default function HomePage() {
       const res = await publish();
       if (res.connected && res.published) {
         setPublishFeedback('success');
-        setPublishMessage('Enviado a Bombolab — en vivo');
+        setPublishMessage(t('publish.success'));
       } else {
         setPublishFeedback('queued');
-        setPublishMessage(
-          'En cola de envío: ningún dispositivo Bombolab conectado en este momento.'
-        );
+        setPublishMessage(t('publish.queued'));
       }
     } catch (err) {
       setPublishFeedback('error');
@@ -93,15 +164,13 @@ export default function HomePage() {
           | { error?: string; detail?: string }
           | undefined;
         if (body?.error === 'E_NO_JOB') {
-          setPublishMessage(
-            'No hay una imagen convertida para enviar. Convierte una imagen primero.'
-          );
+          setPublishMessage(t('publish.error.noJob'));
         } else {
           setPublishMessage(body?.detail ?? body?.error ?? err.message);
         }
       } else {
         setPublishMessage(
-          err instanceof Error ? err.message : 'No se pudo enviar el G-Code.'
+          err instanceof Error ? err.message : t('publish.error.fallback')
         );
       }
     } finally {
@@ -110,121 +179,209 @@ export default function HomePage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight">CIPRA</h1>
-          <p className="mt-2 text-lg text-gray-600">
-            Convertidor Inteligente de Píxeles a Rutas Automatizadas
-          </p>
+    <div className="flex min-h-screen flex-col">
+      {/* ── Header ── */}
+      <header className="border-b border-ci-rule bg-white">
+        <div className="mx-auto max-w-5xl px-4 py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="font-display text-3xl tracking-tight text-ci-text">
+                {t('app.title')}
+              </h1>
+              <p className="mt-1 font-body text-sm tracking-precise text-ci-muted">
+                {t('app.tagline')}
+              </p>
+            </div>
+            <ConnectionBadge status={status} clients={clients} />
+          </div>
         </div>
-        <ConnectionBadge status={status} clients={clients} />
-      </div>
+      </header>
 
-      <section className="mt-8 space-y-6">
-        <ImageDropzone onSelect={setFile} disabled={isUploading} />
+      {/* ── Body ── */}
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8">
+        <section className="space-y-8">
+          {/* Dropzone */}
+          <ImageDropzone onSelect={handleFileSelect} disabled={isUploading} />
 
-        <div
-          role="tablist"
-          aria-label="Vistas de conversión"
-          className="flex border-b border-gray-200"
-        >
-          {(Object.keys(TAB_LABELS) as TabId[]).map((tabId) => (
-            <button
-              key={tabId}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tabId}
-              onClick={() => setActiveTab(tabId)}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tabId
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+          {/* Canvas / viewer / params grid */}
+          {file && (
+            <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
+              {/* Left column: preview/viewer */}
+              <div className="space-y-4">
+                {/* Real-time toggle */}
+                <div className="flex items-center justify-between rounded-lg border border-ci-rule bg-ci-surface px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Toggle
+                      enabled={realtime}
+                      onChange={setRealtime}
+                      label={t('toggle.realtime')}
+                    />
+                    {realtime && (
+                      <span className="font-body text-2xs font-semibold uppercase tracking-precise text-ci-accent">
+                        {t('toggle.live')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-body text-2xs tracking-precise text-ci-muted">
+                    {t('toggle.description')}
+                  </p>
+                </div>
+
+                {/* Tabs */}
+                <div role="tablist" aria-label={t('tabs.views')} className="flex border-b border-ci-rule">
+                  {TAB_IDS.map((tab, index) => {
+                    const active = activeTab === tab;
+                    return (
+                      <button
+                        key={tab}
+                        ref={setTabRef(tab)}
+                        type="button"
+                        role="tab"
+                        id={tabId(tab)}
+                        aria-controls={panelId(tab)}
+                        aria-selected={active}
+                        tabIndex={active ? 0 : -1}
+                        onClick={() => setActiveTab(tab)}
+                        onKeyDown={(e) => handleTabKeyDown(e, index)}
+                        className={`relative pb-2.5 pr-6 font-body text-sm font-medium tracking-precise transition-colors ${
+                          active
+                            ? 'text-ci-accent after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-ci-accent'
+                            : 'text-ci-muted hover:text-ci-text'
+                        }`}
+                      >
+                        {t(`tabs.${tab}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="min-h-[450px]">
+                  {activeTab === 'preview' && (
+                    <div role="tabpanel" id={panelId('preview')} aria-labelledby={tabId('preview')} tabIndex={0}>
+                      <CanvasPreview imageUrl={previewUrl} />
+                    </div>
+                  )}
+                  {activeTab === 'viewer' && (
+                    <div role="tabpanel" id={panelId('viewer')} aria-labelledby={tabId('viewer')} tabIndex={0}>
+                      <GCodeViewer
+                        gcode={result?.gcode ?? null}
+                        workAreaW={params.scara?.work_area_w_mm}
+                        workAreaH={params.scara?.work_area_h_mm}
+                        fallbackText={t('viewer.empty')}
+                      />
+                    </div>
+                  )}
+                  {activeTab === 'gcode' && (
+                    <div role="tabpanel" id={panelId('gcode')} aria-labelledby={tabId('gcode')} tabIndex={0}>
+                      <GCodeOutput gcode={result?.gcode ?? null} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right column: params */}
+              <div className="space-y-6">
+                {file && (
+                  <ParameterPanel
+                    params={params}
+                    onChange={(changes) =>
+                      setParams((prev) => ({ ...prev, ...changes }))
+                    }
+                    disabled={isUploading}
+                    imageType={imageType}
+                    onImageTypeChange={setImageType}
+                  />
+                )}
+
+                {/* Error */}
+                {error && (
+                  <div
+                    className="rounded-lg border border-ci-danger/20 bg-ci-danger-bg px-4 py-3 font-body text-sm text-ci-danger"
+                    role="alert"
+                  >
+                    {error}
+                  </div>
+                )}
+
+                {/* Warnings */}
+                <WarningsList warnings={result?.warnings ?? []} />
+              </div>
+            </div>
+          )}
+
+          {/* Publish feedback */}
+          {publishFeedback === 'success' && (
+            <div
+              className="rounded-lg border border-ci-accent/20 bg-ci-accent-subtle px-4 py-3 font-body text-sm text-ci-accent"
+              role="status"
+              aria-live="polite"
             >
-              {TAB_LABELS[tabId]}
+              {publishMessage}
+            </div>
+          )}
+          {publishFeedback === 'queued' && (
+            <div
+              className="rounded-lg border border-ci-warning/30 bg-ci-warning-bg px-4 py-3 font-body text-sm text-ci-warning"
+              role="status"
+              aria-live="polite"
+            >
+              {publishMessage}
+            </div>
+          )}
+          {publishFeedback === 'error' && (
+            <div
+              className="rounded-lg border border-ci-danger/20 bg-ci-danger-bg px-4 py-3 font-body text-sm text-ci-danger"
+              role="alert"
+            >
+              {publishMessage}
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* ── Sticky bottom bar — Convert always accessible ── */}
+      <footer className="sticky bottom-0 z-20 border-t border-ci-rule bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+          <div className="flex items-center gap-4">
+            <LanguageSwitcher />
+            {isUploading && !realtime && (
+              <p className="font-body text-sm text-ci-accent" aria-live="polite">
+                {t('status.generating')}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isUploading}
+              className="rounded-md px-3 py-2 font-body text-sm font-medium text-ci-muted transition-colors hover:bg-ci-accent-subtle hover:text-ci-text disabled:cursor-not-allowed disabled:opacity-40 focus-ring"
+            >
+              {t('button.reset')}
             </button>
-          ))}
+
+            <button
+              type="button"
+              onClick={handleConvert}
+              disabled={!canConvert}
+              className="rounded-md bg-ci-accent px-5 py-2 font-body text-sm font-semibold text-white transition-colors hover:bg-ci-accent-hover disabled:cursor-not-allowed disabled:opacity-40 focus-ring"
+            >
+              {isUploading && !realtime ? t('button.converting') : t('button.convert')}
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={!canPublish}
+              aria-label={t('publish.ariaLabel')}
+              className="rounded-md border border-ci-rule bg-white px-5 py-2 font-body text-sm font-semibold text-ci-accent transition-colors hover:bg-ci-accent-subtle disabled:cursor-not-allowed disabled:opacity-40 focus-ring"
+            >
+              {publishing ? t('publish.publishing') : t('publish.button')}
+            </button>
+          </div>
         </div>
-
-        <div role="tabpanel" className="min-h-[200px]">
-          {activeTab === 'preview' && <CanvasPreview imageUrl={imageUrl} />}
-          {activeTab === 'viewer' && (
-            <GCodeViewer gcode={result?.gcode ?? null} />
-          )}
-          {activeTab === 'gcode' && (
-            <GCodeOutput gcode={result?.gcode ?? null} />
-          )}
-        </div>
-
-        <ParameterPanel
-          params={params}
-          onChange={(changes) =>
-            setParams((prev) => ({ ...prev, ...changes }))
-          }
-          disabled={isUploading}
-        />
-
-        {error && (
-          <div className="rounded-lg bg-red-50 p-4 text-red-700" role="alert">
-            {error}
-          </div>
-        )}
-
-        {publishFeedback === 'success' && (
-          <div
-            className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-800"
-            role="status"
-          >
-            {publishMessage}
-          </div>
-        )}
-        {publishFeedback === 'queued' && (
-          <div
-            className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
-            role="status"
-          >
-            {publishMessage}
-          </div>
-        )}
-        {publishFeedback === 'error' && (
-          <div
-            className="rounded-lg bg-red-50 p-4 text-red-700"
-            role="alert"
-          >
-            {publishMessage}
-          </div>
-        )}
-
-        <div className="flex gap-4">
-          <button
-            type="button"
-            onClick={handleConvert}
-            disabled={!canConvert}
-            className="flex-1 rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isUploading ? 'Converting...' : 'Convert'}
-          </button>
-          <button
-            type="button"
-            onClick={handlePublish}
-            disabled={!canPublish}
-            className="flex-1 rounded-md bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Enviar a Bombolab
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={isUploading}
-            className="rounded-md bg-gray-200 px-4 py-2 font-medium text-gray-700 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Reset
-          </button>
-        </div>
-
-        <WarningsList warnings={result?.warnings ?? []} />
-      </section>
-    </main>
+      </footer>
+    </div>
   );
 }

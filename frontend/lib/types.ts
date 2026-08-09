@@ -11,8 +11,6 @@ export interface ScaraConfig {
   work_area_h_mm?: number;
   travel_speed?: number;
   draw_speed?: number;
-  tool_offset_mm?: number;
-  origin?: string;
 }
 
 /**
@@ -24,6 +22,9 @@ export interface ConvertParams {
   threshold: number;
   simplify_tolerance: number;
   scara?: ScaraConfig;
+  rotation_deg?: number;
+  flip_h?: boolean;
+  flip_v?: boolean;
 }
 
 /**

@@ -70,7 +70,7 @@ export function ConnectionBadge({
     <span
       role="status"
       aria-label={presentation.description}
-      className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700"
+      className="inline-flex items-center gap-2 rounded-full border border-ci-rule bg-ci-surface px-3 py-1 font-body text-sm font-medium tracking-precise text-ci-muted"
     >
       <span
         aria-hidden="true"
