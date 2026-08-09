@@ -19,6 +19,8 @@ APPEND_SLASH = False
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,backend").split(",")
 
 INSTALLED_APPS = [
+    "daphne",
+    "channels",
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "rest_framework",
@@ -34,6 +36,13 @@ MIDDLEWARE = [
 ROOT_URLCONF = "cipra_api.urls"
 
 WSGI_APPLICATION = "cipra_api.wsgi.application"
+ASGI_APPLICATION = "cipra_api.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
 
 DATABASES = {
     "default": {

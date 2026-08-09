@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+
+from gcode.formatter import FormatResult
 
 
 def _image_file(
@@ -143,6 +146,91 @@ def test_convert_valid_image_produces_gcode_without_stub_warnings(
 
 
 @pytest.mark.django_db
+def test_convert_empty_payload_suppresses_publish(
+    api_client,
+    sample_image_bytes,
+    convert_params,
+    caplog,
+):
+    """S3/R3: empty format result does not publish and logs E_EMPTY_PAYLOAD.
+
+    The real formatter always returns a non-empty preamble, so the empty-payload
+    branch is exercised by mocking ``format_gcode`` to return an empty result.
+    The HTTP response shape and status are unchanged; the snapshot store is left
+    pristine.
+    """
+    from jobs.latest import latest
+
+    fake_result = FormatResult(gcode="", warnings=["no paths"])
+    prior = latest.get()  # snapshot any state left by earlier tests.
+    with patch("jobs.views.format_gcode", return_value=fake_result):
+        response = api_client.post(
+            "/api/v1/convert/",
+            {
+                "image": _image_file(sample_image_bytes),
+                "params": convert_params,
+                "variant": "fast",
+            },
+            format="multipart",
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["gcode"] == ""
+    assert "meta" in data
+    assert "warnings" in data
+    assert isinstance(data["meta"]["stages_run"], list)
+
+    # S3/R3: no envelope is built or stored; the snapshot is untouched.
+    assert latest.get() is prior
+
+    assert any(
+        "E_EMPTY_PAYLOAD" in record.message for record in caplog.records
+    )
+
+
+@pytest.mark.django_db
+def test_convert_does_not_broadcast_and_stores_unpublished(
+    api_client,
+    sample_image_bytes,
+    convert_params,
+    monkeypatch,
+):
+    """S4/R7 revision: converting an image must NOT fan out to subscribers.
+
+    Convert only stores the latest snapshot (unpublished). The publish
+    endpoint — not the convert — is the sole fan-out trigger. We prove this by
+    asserting _publish_to_group is never called, even with a subscriber present,
+    and that the stored snapshot is unpublished.
+    """
+    from unittest.mock import MagicMock
+
+    from jobs import views
+    from jobs.latest import latest
+
+    monkeypatch.setattr(views, "_has_subscribers", lambda: True)
+    publish = MagicMock()
+    monkeypatch.setattr(views, "_publish_to_group", publish)
+
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    # Convert must NOT trigger fan-out.
+    publish.assert_not_called()
+    # The snapshot is stored, but marked unpublished (needs the button).
+    snap = latest.get()
+    assert snap is not None
+    assert latest.is_published() is False
+
+
 def test_convert_invalid_rotation_deg_returns_400(api_client, sample_image_bytes):
     """A rotation_deg outside the allowed enum returns 400."""
     params = json.dumps(

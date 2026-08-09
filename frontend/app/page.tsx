@@ -6,6 +6,8 @@ import { DEFAULTS } from '@/lib/scara-defaults';
 import { ImageType } from '@/lib/presets';
 import { useT } from '@/lib/i18n/useT';
 import { useConvert } from '@/hooks/useConvert';
+import { useGcodeWs } from '@/hooks/useGcodeWs';
+import { ApiError } from '@/lib/api';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { CanvasPreview } from '@/components/CanvasPreview';
 import { GCodeViewer } from '@/components/GCodeViewer';
@@ -14,10 +16,13 @@ import { GCodeOutput } from '@/components/GCodeOutput';
 import { WarningsList } from '@/components/WarningsList';
 import { Toggle } from '@/components/Toggle';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ConnectionBadge } from '@/components/ConnectionBadge';
 
 type TabId = 'preview' | 'viewer' | 'gcode';
 
 const TAB_IDS: TabId[] = ['preview', 'viewer', 'gcode'];
+
+type PublishFeedback = 'success' | 'queued' | 'error';
 
 export default function HomePage() {
   const t = useT();
@@ -29,7 +34,13 @@ export default function HomePage() {
   const [imageType, setImageType] = useState<ImageType>('custom');
   const [realtime, setRealtime] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [publishFeedback, setPublishFeedback] = useState<PublishFeedback | null>(
+    null
+  );
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const { state, result, error, convert, reset } = useConvert();
+  const { status, clients, publish } = useGcodeWs();
   const baseId = useId();
   const tabId = (tab: TabId) => `${baseId}-tab-${tab}`;
   const panelId = (tab: TabId) => `${baseId}-panel-${tab}`;
@@ -103,6 +114,12 @@ export default function HomePage() {
 
   const isUploading = state === 'uploading';
   const canConvert = file !== null && !isUploading;
+  const canPublish =
+    !publishing &&
+    state === 'success' &&
+    result?.gcode !== null &&
+    result?.gcode !== undefined &&
+    result.gcode.trim().length > 0;
 
   const handleConvert = async () => {
     if (!file) return;
@@ -123,6 +140,42 @@ export default function HomePage() {
     setImageType('custom');
     setRealtime(false);
     reset();
+    setPublishFeedback(null);
+    setPublishMessage(null);
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    setPublishFeedback(null);
+    setPublishMessage(null);
+    try {
+      const res = await publish();
+      if (res.connected && res.published) {
+        setPublishFeedback('success');
+        setPublishMessage(t('publish.success'));
+      } else {
+        setPublishFeedback('queued');
+        setPublishMessage(t('publish.queued'));
+      }
+    } catch (err) {
+      setPublishFeedback('error');
+      if (err instanceof ApiError) {
+        const body = err.body as
+          | { error?: string; detail?: string }
+          | undefined;
+        if (body?.error === 'E_NO_JOB') {
+          setPublishMessage(t('publish.error.noJob'));
+        } else {
+          setPublishMessage(body?.detail ?? body?.error ?? err.message);
+        }
+      } else {
+        setPublishMessage(
+          err instanceof Error ? err.message : t('publish.error.fallback')
+        );
+      }
+    } finally {
+      setPublishing(false);
+    }
   };
 
   return (
@@ -130,12 +183,17 @@ export default function HomePage() {
       {/* ── Header ── */}
       <header className="border-b border-ci-rule bg-white">
         <div className="mx-auto max-w-5xl px-4 py-6">
-          <h1 className="font-display text-3xl tracking-tight text-ci-text">
-            {t('app.title')}
-          </h1>
-          <p className="mt-1 font-body text-sm tracking-precise text-ci-muted">
-            {t('app.tagline')}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="font-display text-3xl tracking-tight text-ci-text">
+                {t('app.title')}
+              </h1>
+              <p className="mt-1 font-body text-sm tracking-precise text-ci-muted">
+                {t('app.tagline')}
+              </p>
+            </div>
+            <ConnectionBadge status={status} clients={clients} />
+          </div>
         </div>
       </header>
 
@@ -250,6 +308,34 @@ export default function HomePage() {
               </div>
             </div>
           )}
+
+          {/* Publish feedback */}
+          {publishFeedback === 'success' && (
+            <div
+              className="rounded-lg border border-ci-accent/20 bg-ci-accent-subtle px-4 py-3 font-body text-sm text-ci-accent"
+              role="status"
+              aria-live="polite"
+            >
+              {publishMessage}
+            </div>
+          )}
+          {publishFeedback === 'queued' && (
+            <div
+              className="rounded-lg border border-ci-warning/30 bg-ci-warning-bg px-4 py-3 font-body text-sm text-ci-warning"
+              role="status"
+              aria-live="polite"
+            >
+              {publishMessage}
+            </div>
+          )}
+          {publishFeedback === 'error' && (
+            <div
+              className="rounded-lg border border-ci-danger/20 bg-ci-danger-bg px-4 py-3 font-body text-sm text-ci-danger"
+              role="alert"
+            >
+              {publishMessage}
+            </div>
+          )}
         </section>
       </main>
 
@@ -282,6 +368,16 @@ export default function HomePage() {
               className="rounded-md bg-ci-accent px-5 py-2 font-body text-sm font-semibold text-white transition-colors hover:bg-ci-accent-hover disabled:cursor-not-allowed disabled:opacity-40 focus-ring"
             >
               {isUploading && !realtime ? t('button.converting') : t('button.convert')}
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={!canPublish}
+              aria-label={t('publish.ariaLabel')}
+              className="rounded-md border border-ci-rule bg-white px-5 py-2 font-body text-sm font-semibold text-ci-accent transition-colors hover:bg-ci-accent-subtle disabled:cursor-not-allowed disabled:opacity-40 focus-ring"
+            >
+              {publishing ? t('publish.publishing') : t('publish.button')}
             </button>
           </div>
         </div>

@@ -19,6 +19,14 @@ export const es: Dictionary = {
 
   'status.generating': 'Generando…',
 
+  'publish.button': 'Enviar a Bombolab',
+  'publish.publishing': 'Enviando…',
+  'publish.success': 'Enviado a Bombolab — en vivo',
+  'publish.queued': 'En cola de envío: ningún dispositivo Bombolab conectado en este momento.',
+  'publish.error.noJob': 'No hay una imagen convertida para enviar. Convierte una imagen primero.',
+  'publish.error.fallback': 'No se pudo enviar el G-Code.',
+  'publish.ariaLabel': 'Enviar el G-Code generado al dispositivo Bombolab',
+
   'params.imageType': 'Tipo de imagen',
   'params.scale': 'Escala',
   'params.scale.tooltip': 'Escala el tamaño final del dibujo. 1.0 mantiene el tamaño original.',
