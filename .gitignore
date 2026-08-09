@@ -64,3 +64,4 @@ yarn-error.log*
 
 # OpenCode / agent tooling
 .atl/
+backend/db.sqlite3
