@@ -10,6 +10,8 @@ services:
       - ./backend:/app
     environment:
       - PYTHONUNBUFFERED=1
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-true}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-compose-local-dev-key}
     command: >
       daphne -b 0.0.0.0 -p 8000 cipra_api.asgi:application
 

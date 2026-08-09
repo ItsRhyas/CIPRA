@@ -24,3 +24,11 @@ class ScaraConfig:
     work_area_h_mm: float = 297.0
     travel_speed: Optional[float] = None
     draw_speed: Optional[float] = None
+
+    def __post_init__(self) -> None:
+        """Reject invalid machine geometry or speeds (defense in depth)."""
+        if self.work_area_w_mm <= 0 or self.work_area_h_mm <= 0:
+            raise ValueError("work_area dimensions must be positive.")
+        for speed in (self.travel_speed, self.draw_speed):
+            if speed is not None and speed < 0:
+                raise ValueError("speeds must be non-negative.")

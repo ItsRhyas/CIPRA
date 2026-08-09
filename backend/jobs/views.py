@@ -21,13 +21,17 @@ from cipra_api.ws import protocol
 from gcode.config import ScaraConfig
 from gcode.formatter import format_gcode
 from jobs.latest import latest
-from jobs.serializers import ConvertRequestSerializer
+from jobs.serializers import ConvertRequestSerializer, ImageTooLarge
 from pipeline.orchestrator import PipelineOrchestrator
 from pipeline.types import ConvertResponse, ConvertResponseMeta
 
 logger = logging.getLogger(__name__)
 
 GCODE_GROUP = "gcode"
+
+MAX_IMAGE_PIXELS = 20_000_000  # 20 megapixels
+# Make PIL reject decompression bombs earlier than its own default cap.
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 
 def _has_subscribers() -> bool:
@@ -67,15 +71,19 @@ class ConvertView(APIView):
         scara_config = params.scara if params.scara else ScaraConfig()
 
         start = time.perf_counter()
-        pipeline_output = PipelineOrchestrator().run(image_array, scara_config, params)
-        elapsed_ms = (time.perf_counter() - start) * 1000
+        try:
+            pipeline_output = PipelineOrchestrator().run(image_array, scara_config, params)
+            elapsed_ms = (time.perf_counter() - start) * 1000
 
-        format_result = format_gcode(
-            pipeline_output.coordinates,
-            scara_config,
-            travel_speed=scara_config.travel_speed,
-            draw_speed=scara_config.draw_speed,
-        )
+            format_result = format_gcode(
+                pipeline_output.coordinates,
+                scara_config,
+                travel_speed=scara_config.travel_speed,
+                draw_speed=scara_config.draw_speed,
+            )
+        except Exception as exc:
+            logger.exception("Pipeline failed for image %s", image_file.name)
+            raise ValidationError(f"Image processing failed: {exc}") from exc
 
         if format_result.gcode:
             envelope = protocol.make_gcode_ready(
@@ -155,9 +163,13 @@ def _load_image(image_file: Any) -> np.ndarray:
     """Load an uploaded image into a NumPy RGB array."""
     try:
         image = Image.open(image_file)
+        if image.width * image.height > MAX_IMAGE_PIXELS:
+            raise ImageTooLarge()
         if image.mode != "RGB":
             image = image.convert("RGB")
         return np.array(image)
+    except ImageTooLarge:
+        raise
     except Exception as exc:
         raise ValidationError(f"Could not decode image: {exc}") from exc
 

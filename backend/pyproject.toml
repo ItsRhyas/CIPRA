@@ -31,7 +31,6 @@ packages = ["."]
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-q"
-DJANGO_SETTINGS_MODULE = "cipra_api.settings"
 asyncio_mode = "auto"
 
 [tool.ruff]

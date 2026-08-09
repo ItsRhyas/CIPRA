@@ -16,11 +16,22 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "cipra_api.settings")
+os.environ.setdefault("DJANGO_DEBUG", "true")
 
 pytest_plugins = ["django"]
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache_between_tests() -> None:
+    """Clear the cache before and after each test (keeps throttling stable)."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture

@@ -249,3 +249,68 @@ def test_convert_invalid_rotation_deg_returns_400(api_client, sample_image_bytes
 
     assert response.status_code == 400
     assert "rotation_deg" in str(response.json()).lower()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "params",
+    [
+        json.dumps({"scara": 5}),
+        json.dumps({"threshold": "abc"}),
+        json.dumps({"simplify_tolerance": -5}),
+        json.dumps({"scale": float("nan")}),
+        json.dumps({"flip_h": "true"}),
+        json.dumps({"scara": {"work_area_w_mm": 0}}),
+        json.dumps({"scale": 0}),
+    ],
+)
+def test_convert_invalid_params_return_400(api_client, sample_image_bytes, params):
+    """Invalid params values return 400 (never 500)."""
+    response = api_client.post(
+        "/api/v1/convert/",
+        {"image": _image_file(sample_image_bytes), "params": params, "variant": "fast"},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_convert_too_many_pixels_returns_413(
+    api_client,
+    sample_image_bytes,
+    convert_params,
+    monkeypatch,
+):
+    """Images above the pixel cap return 413, not a 500."""
+    from jobs import views
+
+    monkeypatch.setattr(views, "MAX_IMAGE_PIXELS", 100)
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 413
+
+
+@pytest.mark.django_db
+def test_convert_gcode_never_contains_nan(api_client, sample_image_bytes, convert_params):
+    """The generated G-Code must never contain a 'nan' literal."""
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    assert "nan" not in response.json()["gcode"].lower()
