@@ -1,16 +1,6 @@
-# Spec: pipeline-params
+# Delta for pipeline-params
 
-## Requirements
-
-### Requirement: Coordinate Scaling
-
-The system MUST apply `scale` as a multiplier to output coordinates after pixel-to-millimeter conversion.
-
-#### Scenario: scale doubles output
-
-- GIVEN `params.scale = 2.0`
-- WHEN the pipeline emits coordinates
-- THEN every `(x, y)` is multiplied by 2.0 before formatting
+## MODIFIED Requirements
 
 ### Requirement: Canny Threshold Wiring
 
@@ -34,6 +24,8 @@ The system MUST use `threshold` as the Canny low boundary, with `high = min(thre
 - GIVEN `params.threshold = 127` and `auto_threshold = true`
 - WHEN the pipeline runs
 - THEN the Canny low threshold is the fuzzy controller's output, not 127
+
+## ADDED Requirements
 
 ### Requirement: Auto-Threshold Parameter Validation
 
@@ -111,28 +103,3 @@ The frontend MUST provide a switch labeled for automatic threshold in the parame
 - GIVEN the auto-threshold switch is ON
 - WHEN the user applies an image-type preset (e.g. line_art)
 - THEN `auto_threshold` resets to false and the preset's threshold takes effect
-
-### Requirement: F-Code Emission
-
-The system MUST emit `F` feed codes driven by `travel_speed` on every `G0` move and `draw_speed` on every `G1` move.
-
-#### Scenario: speeds configured
-
-- GIVEN `ScaraConfig.travel_speed = 3000` and `draw_speed = 1500`
-- WHEN `format_gcode` renders paths
-- THEN every `G0` line carries `F3000` and every `G1` line carries `F1500`
-
-### Requirement: ConvertParams Defaults
-
-The default `simplify_tolerance` MUST be 1.0 in `types.py`, the serializer, and the API contract — a single reconciled value across all layers.
-
-#### Scenario: default tolerance from API
-
-- GIVEN a client omits `simplify_tolerance`
-- WHEN `ConvertParams` is constructed via the serializer
-- THEN `simplify_tolerance` is 1.0
-
-#### Scenario: default tolerance from orchestrator
-
-- GIVEN `ConvertParams()` is constructed directly with no arguments
-- THEN `simplify_tolerance` is 1.0

@@ -103,6 +103,10 @@ class ConvertRequestSerializer(serializers.Serializer):
         if not isinstance(flip_v, bool):
             raise serializers.ValidationError("flip_v must be a boolean.")
 
+        auto_threshold = data.get("auto_threshold", False)
+        if not isinstance(auto_threshold, bool):
+            raise serializers.ValidationError("auto_threshold must be a boolean.")
+
         scale = self._finite_float(data.get("scale", 1.0), "scale", min_value=0.01)
         simplify_tolerance = self._finite_float(
             data.get("simplify_tolerance", 1.0),
@@ -177,6 +181,7 @@ class ConvertRequestSerializer(serializers.Serializer):
         return ConvertParams(
             scale=scale,
             threshold=threshold,
+            auto_threshold=auto_threshold,
             simplify_tolerance=simplify_tolerance,
             scara=scara,
             rotation_deg=rotation_deg,

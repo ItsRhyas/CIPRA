@@ -25,6 +25,7 @@ export interface ConvertParams {
   rotation_deg?: number;
   flip_h?: boolean;
   flip_v?: boolean;
+  auto_threshold?: boolean;
 }
 
 /**

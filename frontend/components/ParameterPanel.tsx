@@ -6,6 +6,7 @@ import { DEFAULTS } from '@/lib/scara-defaults';
 import { ImageType, IMAGE_TYPE_PRESETS, IMAGE_TYPE_KEYS } from '@/lib/presets';
 import { useT } from '@/lib/i18n/useT';
 import { Tooltip } from '@/components/Tooltip';
+import { Toggle } from '@/components/Toggle';
 
 export interface ParameterPanelProps {
   params: ConvertParams & { variant: Variant };
@@ -99,6 +100,7 @@ interface NumericParamRowProps {
   disabled?: boolean;
   onChange: (value: number) => void;
   onReset: () => void;
+  showSlider?: boolean;
 }
 
 function NumericParamRow({
@@ -115,6 +117,7 @@ function NumericParamRow({
   disabled,
   onChange,
   onReset,
+  showSlider,
 }: NumericParamRowProps) {
   const t = useT();
 
@@ -154,17 +157,19 @@ function NumericParamRow({
         </button>
       </div>
       <div className="flex items-center gap-3">
-        <input
-          id={id}
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => handleChange(e.target.value)}
-          disabled={disabled}
-          className="flex-1"
-        />
+        {showSlider !== false && (
+          <input
+            id={id}
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => handleChange(e.target.value)}
+            disabled={disabled}
+            className="flex-1"
+          />
+        )}
         <input
           type="number"
           min={min}
@@ -304,6 +309,14 @@ export function ParameterPanel({
         disabled={disabled}
         onChange={(scale) => handleImageParamChange({ scale })}
         onReset={() => handleImageParamChange({ scale: DEFAULTS.scale })}
+        showSlider={false}
+      />
+
+      <Toggle
+        enabled={params.auto_threshold ?? false}
+        onChange={(auto_threshold) => handleImageParamChange({ auto_threshold })}
+        label={t('params.autoThreshold')}
+        disabled={disabled}
       />
 
       <NumericParamRow
@@ -317,7 +330,7 @@ export function ParameterPanel({
         parse={(value) => parseInt(value, 10)}
         format={(v) => String(v)}
         tooltip={t('params.threshold.tooltip')}
-        disabled={disabled}
+        disabled={disabled || (params.auto_threshold ?? false)}
         onChange={(threshold) => handleImageParamChange({ threshold })}
         onReset={() => handleImageParamChange({ threshold: DEFAULTS.threshold })}
       />

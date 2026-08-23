@@ -314,3 +314,66 @@ def test_convert_gcode_never_contains_nan(api_client, sample_image_bytes, conver
 
     assert response.status_code == 200
     assert "nan" not in response.json()["gcode"].lower()
+
+
+@pytest.mark.django_db
+def test_convert_auto_threshold_returns_fuzzy_meta(api_client, sample_image_bytes):
+    """auto_threshold=true runs the fuzzy stage and returns meta.fuzzy."""
+    params = json.dumps({"threshold": 127, "auto_threshold": True})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "fuzzy" in data["meta"]
+    fuzzy = data["meta"]["fuzzy"]
+    assert "inputs" in fuzzy
+    assert "memberships" in fuzzy
+    assert "fired_rules" in fuzzy
+    assert "defuzzified" in fuzzy
+    assert "threshold" in fuzzy
+    assert 0 <= fuzzy["threshold"] <= 255
+    assert "fuzzy" in data["meta"]["stages_run"]
+
+
+@pytest.mark.django_db
+def test_convert_default_omits_fuzzy_meta(api_client, sample_image_bytes, convert_params):
+    """Without auto_threshold the response has no fuzzy diagnostics."""
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "fuzzy" not in data["meta"]
+    assert "fuzzy" not in data["meta"]["stages_run"]
+
+
+@pytest.mark.django_db
+def test_convert_invalid_auto_threshold_returns_400(api_client, sample_image_bytes):
+    """auto_threshold must be a boolean."""
+    params = json.dumps({"auto_threshold": "yes"})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 400

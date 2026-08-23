@@ -112,14 +112,18 @@ class ConvertView(APIView):
             warnings=warnings,
         )
 
+        meta: dict[str, Any] = {
+            "variant": response.meta.variant,
+            "stages_run": response.meta.stages_run,
+            "elapsed_ms": response.meta.elapsed_ms,
+        }
+        if pipeline_output.fuzzy_meta is not None:
+            meta["fuzzy"] = pipeline_output.fuzzy_meta
+
         return Response(
             {
                 "gcode": response.gcode,
-                "meta": {
-                    "variant": response.meta.variant,
-                    "stages_run": response.meta.stages_run,
-                    "elapsed_ms": response.meta.elapsed_ms,
-                },
+                "meta": meta,
                 "warnings": response.warnings,
             }
         )
@@ -172,5 +176,15 @@ def _load_image(image_file: Any) -> np.ndarray:
         raise
     except Exception as exc:
         raise ValidationError(f"Could not decode image: {exc}") from exc
+
+
+class HealthCheckView(APIView):
+    """GET /health/ — simple liveness probe for Docker/load balancer."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request: Request) -> Response:
+        return Response({"status": "ok"})
 
 
