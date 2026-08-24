@@ -6,8 +6,19 @@ export const es: Dictionary = {
 
   'tabs.preview': 'Vista previa',
   'tabs.viewer': 'Trayectorias',
+  'tabs.stages': 'Etapas',
   'tabs.gcode': 'G-Code',
   'tabs.views': 'Vistas de conversión',
+
+  'stages.empty': 'Convierte una imagen para ver las etapas del pipeline.',
+  'stages.step': 'Paso',
+  'stages.stepOf': 'paso {current} de {total}',
+  'stages.prev': 'Anterior',
+  'stages.next': 'Siguiente',
+  'stages.label.preprocess': 'Preprocesada',
+  'stages.label.edges': 'Bordes',
+  'stages.label.contours': 'Contornos',
+  'stages.label.simplify': 'Simplificada',
 
   'toggle.realtime': 'Tiempo real',
   'toggle.live': 'Activo',

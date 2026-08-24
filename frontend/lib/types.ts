@@ -14,6 +14,18 @@ export interface MachineConfig {
 }
 
 /**
+ * A captured visual stage from the image-to-GCode pipeline.
+ * SOURCE: shared/api-contract.json#/$defs/StageImage
+ */
+export interface StageImage {
+  id: string;
+  label: string;
+  order: number;
+  mime: string;
+  png_base64: string;
+}
+
+/**
  * Processing parameters for the vision pipeline.
  * SOURCE: shared/api-contract.json#/$defs/ConvertParams
  */
@@ -26,6 +38,8 @@ export interface ConvertParams {
   flip_h?: boolean;
   flip_v?: boolean;
   auto_threshold?: boolean;
+  include_stage_images?: boolean;
+  variant?: Variant;
 }
 
 /**
@@ -36,6 +50,7 @@ export interface ConvertResponseMeta {
   variant: Variant;
   stages_run: string[];
   elapsed_ms: number;
+  stage_images?: StageImage[];
 }
 
 /**

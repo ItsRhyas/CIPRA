@@ -6,8 +6,19 @@ export const en: Dictionary = {
 
   'tabs.preview': 'Preview',
   'tabs.viewer': 'Paths',
+  'tabs.stages': 'Stages',
   'tabs.gcode': 'G-Code',
   'tabs.views': 'Conversion views',
+
+  'stages.empty': 'Convert an image to see the pipeline stages.',
+  'stages.step': 'Step',
+  'stages.stepOf': 'step {current} of {total}',
+  'stages.prev': 'Previous',
+  'stages.next': 'Next',
+  'stages.label.preprocess': 'Preprocessed',
+  'stages.label.edges': 'Edges',
+  'stages.label.contours': 'Contours',
+  'stages.label.simplify': 'Simplified',
 
   'toggle.realtime': 'Real-time',
   'toggle.live': 'Live',

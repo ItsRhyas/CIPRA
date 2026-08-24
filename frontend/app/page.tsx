@@ -11,6 +11,7 @@ import { ApiError } from '@/lib/api';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { CanvasPreview } from '@/components/CanvasPreview';
 import { GCodeViewer } from '@/components/GCodeViewer';
+import { StageGallery } from '@/components/StageGallery';
 import { ParameterPanel } from '@/components/ParameterPanel';
 import { GCodeOutput } from '@/components/GCodeOutput';
 import { WarningsList } from '@/components/WarningsList';
@@ -18,9 +19,9 @@ import { Toggle } from '@/components/Toggle';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { ConnectionBadge } from '@/components/ConnectionBadge';
 
-type TabId = 'preview' | 'viewer' | 'gcode';
+type TabId = 'preview' | 'viewer' | 'stages' | 'gcode';
 
-const TAB_IDS: TabId[] = ['preview', 'viewer', 'gcode'];
+const TAB_IDS: TabId[] = ['preview', 'viewer', 'stages', 'gcode'];
 
 type PublishFeedback = 'success' | 'queued' | 'error';
 
@@ -49,6 +50,7 @@ export default function HomePage() {
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
     preview: null,
     viewer: null,
+    stages: null,
     gcode: null,
   });
 
@@ -124,7 +126,7 @@ export default function HomePage() {
   const handleConvert = async () => {
     if (!file) return;
     isManualConvertRef.current = true;
-    await convert(file, params, t('error.unexpected'));
+    await convert(file, params, t('error.unexpected'), true);
   };
 
   const handleFileSelect = (selectedFile: File | null) => {
@@ -269,6 +271,11 @@ export default function HomePage() {
                         workAreaH={params.machine?.work_area_h_mm}
                         fallbackText={t('viewer.empty')}
                       />
+                    </div>
+                  )}
+                  {activeTab === 'stages' && (
+                    <div role="tabpanel" id={panelId('stages')} aria-labelledby={tabId('stages')} tabIndex={0}>
+                      <StageGallery stage_images={result?.meta?.stage_images ?? []} />
                     </div>
                   )}
                   {activeTab === 'gcode' && (
