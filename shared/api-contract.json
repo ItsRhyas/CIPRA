@@ -3,7 +3,7 @@
   "$id": "https://cipra.local/schemas/api-contract.json",
   "title": "CIPRA Convert API Contract",
   "description": "Request/response contract for POST /api/v1/convert/ between the Next.js frontend and the Django backend.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "$defs": {
     "MachineConfig": {
       "type": "object",
