@@ -408,12 +408,22 @@ def test_convert_include_stage_images_returns_ordered_pngs(api_client, sample_im
     for index, stage in enumerate(stage_images):
         assert stage["order"] == index
         assert stage["mime"] == "image/png"
+        assert stage["label"], f"stage {stage['id']} must carry a human label"
         png_bytes = base64.b64decode(stage["png_base64"])
         decoded = cv2.imdecode(
             np.frombuffer(png_bytes, dtype=np.uint8),
             cv2.IMREAD_UNCHANGED,
         )
         assert decoded is not None
+        if index in (0, 1):
+            # preprocess/edges are directly-encoded single-channel bitmaps.
+            assert decoded.ndim == 2
+        else:
+            # contours/simplify are rendered onto a white 3-channel canvas.
+            assert decoded.ndim == 3
+            assert decoded.shape[2] == 3
+            assert np.any(np.all(decoded == 255, axis=2))
+            assert not np.all(np.all(decoded == 255, axis=2))
 
 
 @pytest.mark.django_db
@@ -487,3 +497,26 @@ def test_convert_invalid_include_stage_images_returns_400(api_client, sample_ima
     )
 
     assert response.status_code == 400
+
+
+def test_contract_types_regeneration_is_idempotent() -> None:
+    """The committed types.py exactly matches what the generator produces."""
+    import importlib.util
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[2]
+    script = repo_root / "scripts" / "generate-contract-types.py"
+    spec = importlib.util.spec_from_file_location("generate_contract_types", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    schema = json.loads(
+        (repo_root / "shared" / "api-contract.json").read_text(encoding="utf-8")
+    )
+    generated = module.generate(schema)
+    committed = (repo_root / "backend" / "pipeline" / "types.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert generated == committed
