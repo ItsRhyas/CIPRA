@@ -10,7 +10,7 @@ export const en: Dictionary = {
   'tabs.gcode': 'G-Code',
   'tabs.views': 'Conversion views',
 
-  'stages.empty': 'Convert with stage previews enabled to see pipeline stages.',
+  'stages.empty': 'Convert an image to see the pipeline stages.',
   'stages.step': 'Step',
   'stages.stepOf': 'step {current} of {total}',
   'stages.prev': 'Previous',
