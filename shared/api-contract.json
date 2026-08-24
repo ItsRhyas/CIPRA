@@ -78,8 +78,49 @@
           "type": "boolean",
           "default": false,
           "description": "Mirror the image vertically (up-down) before processing."
+        },
+        "include_stage_images": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the response meta includes base64 PNG previews of the pipeline visual stages."
+        },
+        "variant": {
+          "type": "string",
+          "enum": ["fast", "detailed", "balanced"],
+          "default": "balanced",
+          "description": "Conversion quality preset. Sent at the request level and injected into params server-side."
         }
       },
+      "additionalProperties": false
+    },
+    "StageImage": {
+      "type": "object",
+      "description": "A preview image captured from an intermediate pipeline stage.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable machine-readable stage identifier."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable stage label."
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution order of this stage within the preview sequence."
+        },
+        "mime": {
+          "type": "string",
+          "const": "image/png",
+          "description": "MIME type of the encoded image."
+        },
+        "png_base64": {
+          "type": "string",
+          "description": "PNG image encoded as a base64 string."
+        }
+      },
+      "required": ["id", "order", "mime", "png_base64"],
       "additionalProperties": false
     },
     "ConvertResponseMeta": {
@@ -101,6 +142,13 @@
           "type": "number",
           "minimum": 0,
           "description": "Total processing time in milliseconds."
+        },
+        "stage_images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StageImage"
+          },
+          "description": "Base64 PNG previews of the visual pipeline stages, present only when include_stage_images was true."
         },
         "fuzzy": {
           "type": "object",

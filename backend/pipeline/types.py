@@ -16,11 +16,12 @@ class ConvertParams:
     threshold: int = 127
     auto_threshold: bool = False
     simplify_tolerance: float = 1.0
-    variant: str = "balanced"
     machine: MachineConfig | None = None
     rotation_deg: int = 0
     flip_h: bool = False
     flip_v: bool = False
+    include_stage_images: bool = False
+    variant: str = 'balanced'
 
 
 @dataclass
@@ -51,6 +52,8 @@ class ConvertResponseMeta:
     variant: str
     stages_run: list[str]
     elapsed_ms: float
+    stage_images: list[StageImage] = field(default_factory=list)
+    fuzzy: dict[str, Any] | None = None
 
 
 @dataclass
@@ -60,6 +63,17 @@ class ErrorResponse:
     error: str
     detail: str | None = None
     field_errors: dict[str, Any] | None = None
+
+
+@dataclass
+class StageImage:
+    """A preview image captured from an intermediate pipeline stage."""
+
+    id: str
+    order: int
+    mime: str
+    png_base64: str
+    label: str | None = None
 
 
 
@@ -84,15 +98,11 @@ class StageResult:
 
 @dataclass
 class PipelineOutput:
-    """Final aggregated output of the vision pipeline.
-
-    ``coordinates`` is a list of drawing paths. Each path is a list of
-    ``(x, y)`` points in millimeters. Path boundaries are preserved so that
-    travel moves (G0) are only emitted between disconnected contours.
-    """
+    """Final aggregated output of the vision pipeline."""
 
     coordinates: list[list[tuple[float, float]]] = field(default_factory=list)
     warnings: list[Warning] = field(default_factory=list)
     stages_run: list[str] = field(default_factory=list)
     fuzzy_meta: dict | None = None
+    stage_images: list[StageImage] = field(default_factory=list)
 
