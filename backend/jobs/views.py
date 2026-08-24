@@ -119,6 +119,17 @@ class ConvertView(APIView):
         }
         if pipeline_output.fuzzy_meta is not None:
             meta["fuzzy"] = pipeline_output.fuzzy_meta
+        if pipeline_output.stage_images:
+            meta["stage_images"] = [
+                {
+                    "id": stage.id,
+                    "label": stage.label,
+                    "order": stage.order,
+                    "mime": stage.mime,
+                    "png_base64": stage.png_base64,
+                }
+                for stage in pipeline_output.stage_images
+            ]
 
         return Response(
             {
