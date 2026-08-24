@@ -10,7 +10,7 @@ export interface UseConvertReturn {
   state: ConvertState;
   result: ConvertResponse | null;
   error: string | null;
-  convert: (image: File, params: ConvertParams & { variant: Variant }, fallbackError?: string) => Promise<void>;
+  convert: (image: File, params: ConvertParams & { variant: Variant }, fallbackError?: string, includeStageImages?: boolean) => Promise<void>;
   reset: () => void;
 }
 
@@ -52,7 +52,8 @@ export function useConvert(): UseConvertReturn {
     async (
       image: File,
       params: ConvertParams & { variant: Variant },
-      fallbackError = 'An unexpected error occurred'
+      fallbackError = 'An unexpected error occurred',
+      includeStageImages = false
     ) => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -66,7 +67,12 @@ export function useConvert(): UseConvertReturn {
       setError(null);
 
       try {
-        const response = await apiConvert(image, params, controller.signal);
+        const response = await apiConvert(
+          image,
+          params,
+          controller.signal,
+          includeStageImages
+        );
         if (currentRequestId !== requestIdRef.current) {
           return;
         }

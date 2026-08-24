@@ -28,11 +28,17 @@ export class ApiError extends Error {
 export async function convert(
   image: File,
   params: ConvertParams & { variant: Variant },
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  includeStageImages?: boolean
 ): Promise<ConvertResponse | null> {
   const formData = new FormData();
   formData.append('image', image);
-  formData.append('params', JSON.stringify(params));
+
+  const paramsWithFlag = includeStageImages
+    ? { ...params, include_stage_images: true }
+    : params;
+  formData.append('params', JSON.stringify(paramsWithFlag));
+
   formData.append('variant', params.variant);
 
   try {
