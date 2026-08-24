@@ -242,7 +242,7 @@ def _render_mm_paths(
     height = int(config.work_area_h_mm * scale)
     canvas = np.full((height, width, 3), 255, dtype=np.uint8)
 
-    polylines = _mm_paths_to_pixel_polylines(paths, scale)
+    polylines = _mm_paths_to_pixel_polylines(paths, scale, height)
     if polylines:
         cv2.polylines(canvas, polylines, False, (0, 0, 0), 1)
 
@@ -272,8 +272,14 @@ def _paths_to_polylines(paths: object) -> list[NDArray]:
 def _mm_paths_to_pixel_polylines(
     paths: object,
     scale: float,
+    canvas_height: int,
 ) -> list[NDArray]:
-    """Convert millimeter paths to pixel polylines without Y-flipping."""
+    """Convert millimeter paths to pixel polylines, re-flipping the Y axis.
+
+    ``simplify`` emits coordinates with a bottom-left origin (Y increases
+    upward, matching G-Code). Image canvases use a top-left origin (Y increases
+    downward), so the render flips Y back to preserve the original orientation.
+    """
     polylines: list[NDArray] = []
     if not isinstance(paths, list):
         return polylines
@@ -282,7 +288,10 @@ def _mm_paths_to_pixel_polylines(
         if not isinstance(path, list) or len(path) < 2:
             continue
         points = [
-            (int(float(point[0]) * scale), int(float(point[1]) * scale))
+            (
+                int(float(point[0]) * scale),
+                canvas_height - int(float(point[1]) * scale),
+            )
             for point in path
             if isinstance(point, (list, tuple)) and len(point) == 2
         ]
