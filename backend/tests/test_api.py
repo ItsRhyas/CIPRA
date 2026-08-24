@@ -196,7 +196,7 @@ def test_convert_does_not_broadcast_and_stores_unpublished(
     convert_params,
     monkeypatch,
 ):
-    """S4/R7 revision: converting an image must NOT fan out to subscribers.
+    """Converting an image must NOT fan out to subscribers.
 
     Convert only stores the latest snapshot (unpublished). The publish
     endpoint — not the convert — is the sole fan-out trigger. We prove this by
@@ -255,12 +255,12 @@ def test_convert_invalid_rotation_deg_returns_400(api_client, sample_image_bytes
 @pytest.mark.parametrize(
     "params",
     [
-        json.dumps({"scara": 5}),
+        json.dumps({"machine": 5}),
         json.dumps({"threshold": "abc"}),
         json.dumps({"simplify_tolerance": -5}),
         json.dumps({"scale": float("nan")}),
         json.dumps({"flip_h": "true"}),
-        json.dumps({"scara": {"work_area_w_mm": 0}}),
+        json.dumps({"machine": {"work_area_w_mm": 0}}),
         json.dumps({"scale": 0}),
     ],
 )

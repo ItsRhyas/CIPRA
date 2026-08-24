@@ -1,4 +1,4 @@
-"""SCARA machine configuration for G-Code generation."""
+"""Machine configuration for G-Code generation."""
 
 from __future__ import annotations
 
@@ -7,17 +7,13 @@ from typing import Optional
 
 
 @dataclass
-class ScaraConfig:
+class MachineConfig:
     """
-    Physical SCARA machine configuration.
+    Physical machine configuration.
 
     Defaults match an A4 drawing area. Travel and draw speeds are optional;
     when omitted, no F-codes are emitted and the generated G-Code remains
     backward-compatible with feeds defined elsewhere.
-
-    ``tool_offset_mm`` and ``origin`` were removed in this iteration; they may
-    be reintroduced later once the robotics team finalizes the mounting and
-    origin conventions.
     """
 
     work_area_w_mm: float = 210.0

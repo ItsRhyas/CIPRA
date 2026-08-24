@@ -22,7 +22,7 @@ PRIMITIVE_TYPES = {
 # Types that are maintained in dedicated backend modules rather than generated.
 # Format: class name -> (import line, absolute module path for type checking).
 EXTERNAL_TYPES = {
-    "ScaraConfig": ("from gcode.config import ScaraConfig", "backend.gcode.config.ScaraConfig"),
+    "MachineConfig": ("from gcode.config import MachineConfig", "backend.gcode.config.MachineConfig"),
 }
 
 PIPELINE_TYPES = '''

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from pipeline.fuzzy_threshold import (
     EDGE_GRADIENT_THRESHOLD,
     FuzzyController,
@@ -25,9 +25,9 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def default_config() -> ScaraConfig:
-    """Return the default SCARA configuration."""
-    return ScaraConfig()
+def default_config() -> MachineConfig:
+    """Return the default machine configuration."""
+    return MachineConfig()
 
 
 def test_trimf_vertices_and_edges() -> None:
@@ -207,7 +207,7 @@ def test_low_contrast_yields_lower_threshold_than_high_contrast() -> None:
 
 def test_orchestrator_auto_threshold_runs_fuzzy_stage(
     synthetic_image: NDArray,
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """auto_threshold=True runs the fuzzy stage and keeps full coordinates."""
     orchestrator = PipelineOrchestrator()
@@ -227,7 +227,7 @@ def test_orchestrator_auto_threshold_runs_fuzzy_stage(
 
 def test_orchestrator_without_auto_threshold_keeps_legacy_behavior(
     synthetic_image: NDArray,
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """auto_threshold=False preserves the exact legacy pipeline behavior."""
     orchestrator = PipelineOrchestrator()
@@ -244,7 +244,7 @@ def test_orchestrator_without_auto_threshold_keeps_legacy_behavior(
 
 def test_orchestrator_auto_threshold_graceful_when_opencv_missing(
     synthetic_image: NDArray,
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """auto_threshold=True still runs the fuzzy stage when OpenCV is missing."""
     real_cv2 = sys.modules.get("cv2")

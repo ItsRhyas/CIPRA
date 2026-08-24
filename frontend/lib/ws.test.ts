@@ -1,8 +1,7 @@
 /**
- * FT3-02 — RED specs for the WS status client (`CipraWsClient`), planned to land
- * in Slice 2 (F2-01 `lib/ws.ts`).
+ * Specs for the WS status client (`CipraWsClient`) in `lib/ws.ts`.
  *
- * SHAPE ASSUMED (locked here for F2-01 to honor):
+ * Contract:
  *   - `new CipraWsClient(url)` where url is the `/ws/status/` endpoint
  *   - status enum: `'disconnected' | 'connecting' | 'connected' | 'closed'`
  *   - callbacks via options: `{ onStatus(status, env), onEnvelope(env) }`
@@ -15,8 +14,7 @@
  *     and (for gcode.ready) a non-empty `payload` string. Returns `{ ok: true }`
  *     or `{ ok: false, error: 'E_INVALID_ENVELOPE' | 'E_PROTOCOL_VERSION' }`.
  *
- * These tests fail (RED) today because lib/ws.ts does not exist; Slice 2 turns
- * them green. `WebSocket` is stubbed as a test double (AD-4, node environment).
+ * `WebSocket` is stubbed as a test double (node environment).
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

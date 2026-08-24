@@ -2,11 +2,11 @@
 // Hand-rolled TypeScript types from the JSON Schema contract for POST /api/v1/convert/.
 
 /**
- * Physical SCARA machine configuration.
+ * Physical machine configuration.
  * Overrides are optional; defaults match an A4 drawing area.
- * SOURCE: shared/api-contract.json#/$defs/ScaraConfig
+ * SOURCE: shared/api-contract.json#/$defs/MachineConfig
  */
-export interface ScaraConfig {
+export interface MachineConfig {
   work_area_w_mm?: number;
   work_area_h_mm?: number;
   travel_speed?: number;
@@ -21,7 +21,7 @@ export interface ConvertParams {
   scale: number;
   threshold: number;
   simplify_tolerance: number;
-  scara?: ScaraConfig;
+  machine?: MachineConfig;
   rotation_deg?: number;
   flip_h?: boolean;
   flip_v?: boolean;

@@ -9,7 +9,7 @@ from typing import Any
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from pipeline.types import ConvertParams
 
 
@@ -132,49 +132,55 @@ class ConvertRequestSerializer(serializers.Serializer):
             )
 
         try:
-            scara_data = data.get("scara")
-            if scara_data is None:
-                scara = ScaraConfig()
-            elif isinstance(scara_data, dict):
-                known_scara_fields = {
+            machine_data = data.get("machine")
+            if machine_data is None:
+                machine = MachineConfig()
+            elif isinstance(machine_data, dict):
+                known_machine_fields = {
                     "work_area_w_mm",
                     "work_area_h_mm",
                     "travel_speed",
                     "draw_speed",
                 }
-                filtered_scara = {
+                filtered_machine = {
                     key: value
-                    for key, value in scara_data.items()
-                    if key in known_scara_fields
+                    for key, value in machine_data.items()
+                    if key in known_machine_fields
                 }
-                validated_scara: dict[str, float] = {}
-                if "work_area_w_mm" in filtered_scara:
-                    validated_scara["work_area_w_mm"] = self._finite_float(
-                        filtered_scara["work_area_w_mm"],
-                        "scara.work_area_w_mm",
+                validated_machine: dict[str, float] = {}
+                if "work_area_w_mm" in filtered_machine:
+                    validated_machine["work_area_w_mm"] = self._finite_float(
+                        filtered_machine["work_area_w_mm"],
+                        "machine.work_area_w_mm",
                         min_value=0.01,
                     )
-                if "work_area_h_mm" in filtered_scara:
-                    validated_scara["work_area_h_mm"] = self._finite_float(
-                        filtered_scara["work_area_h_mm"],
-                        "scara.work_area_h_mm",
+                if "work_area_h_mm" in filtered_machine:
+                    validated_machine["work_area_h_mm"] = self._finite_float(
+                        filtered_machine["work_area_h_mm"],
+                        "machine.work_area_h_mm",
                         min_value=0.01,
                     )
-                if "travel_speed" in filtered_scara and filtered_scara["travel_speed"] is not None:
-                    validated_scara["travel_speed"] = self._finite_float(
-                        filtered_scara["travel_speed"],
-                        "scara.travel_speed",
+                if (
+                    "travel_speed" in filtered_machine
+                    and filtered_machine["travel_speed"] is not None
+                ):
+                    validated_machine["travel_speed"] = self._finite_float(
+                        filtered_machine["travel_speed"],
+                        "machine.travel_speed",
                         min_value=0.0,
                     )
-                if "draw_speed" in filtered_scara and filtered_scara["draw_speed"] is not None:
-                    validated_scara["draw_speed"] = self._finite_float(
-                        filtered_scara["draw_speed"],
-                        "scara.draw_speed",
+                if (
+                    "draw_speed" in filtered_machine
+                    and filtered_machine["draw_speed"] is not None
+                ):
+                    validated_machine["draw_speed"] = self._finite_float(
+                        filtered_machine["draw_speed"],
+                        "machine.draw_speed",
                         min_value=0.0,
                     )
-                scara = ScaraConfig(**validated_scara)
+                machine = MachineConfig(**validated_machine)
             else:
-                raise serializers.ValidationError("scara must be an object.")
+                raise serializers.ValidationError("machine must be an object.")
         except (TypeError, ValueError) as exc:
             raise serializers.ValidationError(f"Invalid params field: {exc}") from exc
 
@@ -183,7 +189,7 @@ class ConvertRequestSerializer(serializers.Serializer):
             threshold=threshold,
             auto_threshold=auto_threshold,
             simplify_tolerance=simplify_tolerance,
-            scara=scara,
+            machine=machine,
             rotation_deg=rotation_deg,
             flip_h=flip_h,
             flip_v=flip_v,

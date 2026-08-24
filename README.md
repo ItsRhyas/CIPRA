@@ -1,6 +1,6 @@
 # CIPRA — Convertidor Inteligente de Píxeles a Rutas Automatizadas
 
-CIPRA convierte imágenes 2D en trayectorias geométricas y emite G-Code estándar para brazo robótico SCARA. Monorepo desacoplado: Django REST backend, Next.js frontend, contrato API compartido.
+CIPRA convierte imágenes 2D en trayectorias geométricas y emite G-Code estándar para brazo robótico. Monorepo desacoplado: Django REST backend, Next.js frontend, contrato API compartido.
 
 ## Stack
 
@@ -15,22 +15,23 @@ CIPRA convierte imágenes 2D en trayectorias geométricas y emite G-Code estánd
 ```
 .
 ├── backend/            # Django project + vision pipeline
-│   ├── cipra_api/      # Django settings, ASGI, URLs
+│   ├── cipra_api/      # Django settings, ASGI, URLs, WebSocket
 │   ├── jobs/           # API views, serializers
+│   ├── gcode/          # G-Code config + formatter
 │   ├── pipeline/       # Vision pipeline (preprocess, edges, contours, simplify, fuzzy)
 │   ├── tests/          # pytest (116 tests)
+│   ├── manage.py
 │   ├── pyproject.toml
 │   └── Dockerfile
 ├── frontend/           # Next.js 14 app
 │   ├── app/            # App Router pages
 │   ├── components/     # ParameterPanel, Toggle, Tooltip, etc.
-│   ├── hooks/          # useConvert
-│   ├── lib/            # types, api, i18n, presets, scara-defaults
+│   ├── hooks/          # useConvert, useGcodeWs
+│   ├── lib/            # types, api, i18n, presets, machine-defaults, ws
 │   ├── public/
 │   ├── package.json
 │   └── Dockerfile
 ├── shared/             # API contract + G-Code spec
-├── openspec/           # SDD artifacts (specs, changes)
 ├── .github/workflows/  # CI/CD
 ├── docker-compose.yml
 ├── Makefile
@@ -111,10 +112,10 @@ Endpoint principal: **POST `/api/v1/convert/`** — multipart/form-data
 | `threshold` | number | 128 | Umbral bajo Canny (0–255). **Ignorado si `auto_threshold=true`** |
 | `simplify_tolerance` | number | 1.0 | Tolerancia Douglas-Peucker (suavizado) |
 | `auto_threshold` | boolean | false | Activa selector difuso automático de umbral (Mamdani) |
-| `scara.work_area_w_mm` | number | 210 | Ancho área trabajo SCARA (mm) |
-| `scara.work_area_h_mm` | number | 297 | Alto área trabajo SCARA (mm) |
-| `scara.travel_speed` | number? | — | Velocidad G0 (mm/min) |
-| `scara.draw_speed` | number? | — | Velocidad G1 (mm/min) |
+| `machine.work_area_w_mm` | number | 210 | Ancho área trabajo (mm) |
+| `machine.work_area_h_mm` | number | 297 | Alto área trabajo (mm) |
+| `machine.travel_speed` | number? | — | Velocidad G0 (mm/min) |
+| `machine.draw_speed` | number? | — | Velocidad G1 (mm/min) |
 | `rotation_deg` | number | 0 | Rotación: 0, 90, 180, 270 |
 | `flip_h` | boolean | false | Espejo horizontal |
 | `flip_v` | boolean | false | Espejo vertical |
@@ -179,7 +180,7 @@ Endpoint principal: **POST `/api/v1/convert/`** — multipart/form-data
 - **TSP nearest-neighbor** para ordenar segmentos (minimiza desplazamientos G0)
 - Emite lista de coordenadas `(x, y)` en mm
 
-### 6. G-Code Formatter (`backend/pipeline/gcode_formatter.py`)
+### 6. G-Code Formatter (`backend/gcode/formatter.py`)
 - Header: `G90 G21 M3`
 - `G0` (travel) con `F{travel_speed}` o default
 - `G1` (draw) con `F{draw_speed}` o default
@@ -208,7 +209,7 @@ Panel principal de parámetros. Props:
 | **Tolerance** | Slider (0.1–10.0) + input numérico | Suavizado Douglas-Peucker |
 | **Variant** | Select (Fast / Detailed / Balanced) | Modo preprocess |
 | **Transform** | Píldoras rotación (0/90/180/270) + botones Flip H/V | Rotación y espejo |
-| **Work Area** | Collapsible: preset A4/A3/Letter + inputs W/H + speeds | Config SCARA |
+| **Work Area** | Collapsible: preset A4/A3/Letter + inputs W/H + speeds | Config máquina |
 
 ### Toggle Auto Threshold
 
@@ -348,12 +349,6 @@ npm run lint       # ESLint
 npx tsc --noEmit  # TypeScript check
 npm run build     # Next.js build (requiere .next escribible)
 ```
-
----
-
-## SDD Artifacts
-
-Cambios trazados en `openspec/changes/` y specs en `openspec/specs/`. Último cambio archivado: `fuzzy-auto-threshold` (motor difuso + switch frontend).
 
 ---
 

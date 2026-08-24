@@ -1,14 +1,13 @@
 /**
- * FT3-02 — RED specs for `publish()` in `lib/api.ts` (landed later in F2-02).
+ * Specs for `publish()` in `lib/api.ts`.
  *
- * Maps to R6 / design: `publish()` POSTs `/api/v1/gcode/publish/` and returns a
+ * `publish()` POSTs `/api/v1/gcode/publish/` and returns a
  * `{ published, connected, job_id }` result. Re-publishing the current snapshot
  * is idempotent (same job_id); the backend is the source of truth and the button
  * is pure HTTP (no WS publish from the CIPRA frontend). A non-2xx response
  * (e.g. 404 E_NO_JOB, or other 4xx) raises `ApiError` with the parsed body.
  *
- * `fetch` is mocked via `vi.stubGlobal` because vitest runs under node (AD-4).
- * These tests fail (RED) today because `publish()` does not exist yet.
+ * `fetch` is mocked via `vi.stubGlobal` because vitest runs under node.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -85,7 +84,7 @@ describe('publish() · payload & URL', () => {
   });
 });
 
-describe('publish() · idempotent re-publish (R6)', () => {
+describe('publish() · idempotent re-publish', () => {
   it('republishing keeps the same job_id (idempotent)', async () => {
     const fetchMock = mockFetchResponse({
       published: true,

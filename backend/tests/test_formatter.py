@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from gcode.formatter import FormatResult, format_gcode
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -15,9 +15,9 @@ def _load_gcode(name: str) -> str:
     return (FIXTURES_DIR / name).read_text(encoding="utf-8")
 
 
-def test_default_scara_config_a4_defaults() -> None:
-    """The default SCARA config matches an A4 work area."""
-    config = ScaraConfig()
+def test_default_machine_config_a4_defaults() -> None:
+    """The default machine config matches an A4 work area."""
+    config = MachineConfig()
 
     assert config.work_area_w_mm == 210.0
     assert config.work_area_h_mm == 297.0
@@ -66,7 +66,7 @@ def test_format_gcode_single_point_path() -> None:
 
 def test_format_gcode_clamps_out_of_area_coordinates() -> None:
     """Coordinates outside the work area are clamped and warned."""
-    config = ScaraConfig(work_area_w_mm=200.0, work_area_h_mm=200.0)
+    config = MachineConfig(work_area_w_mm=200.0, work_area_h_mm=200.0)
     paths: list[list[tuple[float, float]]] = [[(-10.0, 50.0), (300.0, 10.0)]]
     result = format_gcode(paths, config=config)
 

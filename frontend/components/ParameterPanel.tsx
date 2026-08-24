@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
-import { DEFAULTS } from '@/lib/scara-defaults';
+import { DEFAULTS } from '@/lib/machine-defaults';
 import { ImageType, IMAGE_TYPE_PRESETS, IMAGE_TYPE_KEYS } from '@/lib/presets';
 import { useT } from '@/lib/i18n/useT';
 import { Tooltip } from '@/components/Tooltip';
@@ -204,14 +204,14 @@ export function ParameterPanel({
   const [workAreaOpen, setWorkAreaOpen] = useState(false);
 
   const workAreaPreset = useMemo(() => {
-    const w = params.scara?.work_area_w_mm;
-    const h = params.scara?.work_area_h_mm;
+    const w = params.machine?.work_area_w_mm;
+    const h = params.machine?.work_area_h_mm;
     const match = WORK_AREA_PRESET_KEYS.find((key) => {
       const dims = WORK_AREA_PRESETS[key];
       return dims.work_area_w_mm === w && dims.work_area_h_mm === h;
     });
     return match ?? CUSTOM_KEY;
-  }, [params.scara?.work_area_w_mm, params.scara?.work_area_h_mm]);
+  }, [params.machine?.work_area_w_mm, params.machine?.work_area_h_mm]);
 
   const handleImageParamChange = (
     changes: Partial<ConvertParams & { variant: Variant }>
@@ -241,8 +241,8 @@ export function ParameterPanel({
     if (preset !== CUSTOM_KEY) {
       const dims = WORK_AREA_PRESETS[preset];
       onChange({
-        scara: {
-          ...params.scara,
+        machine: {
+          ...params.machine,
           work_area_w_mm: dims.work_area_w_mm,
           work_area_h_mm: dims.work_area_h_mm,
         },
@@ -257,8 +257,8 @@ export function ParameterPanel({
     const parsed = parseFloat(raw);
     if (Number.isNaN(parsed)) return;
     onChange({
-      scara: {
-        ...params.scara,
+      machine: {
+        ...params.machine,
         [field]: parsed,
       },
     });
@@ -271,8 +271,8 @@ export function ParameterPanel({
     const parsed = raw === '' ? undefined : parseFloat(raw);
     if (raw !== '' && Number.isNaN(parsed as number)) return;
     onChange({
-      scara: {
-        ...params.scara,
+      machine: {
+        ...params.machine,
         [field]: parsed,
       },
     });
@@ -461,7 +461,7 @@ export function ParameterPanel({
                 <input
                   id="workAreaW"
                   type="number"
-                  value={params.scara?.work_area_w_mm ?? ''}
+                  value={params.machine?.work_area_w_mm ?? ''}
                   onChange={(e) =>
                     handleWorkAreaDimension('work_area_w_mm', e.target.value)
                   }
@@ -479,7 +479,7 @@ export function ParameterPanel({
                 <input
                   id="workAreaH"
                   type="number"
-                  value={params.scara?.work_area_h_mm ?? ''}
+                  value={params.machine?.work_area_h_mm ?? ''}
                   onChange={(e) =>
                     handleWorkAreaDimension('work_area_h_mm', e.target.value)
                   }
@@ -500,7 +500,7 @@ export function ParameterPanel({
                   id="travelSpeed"
                   type="number"
                   placeholder={t('params.travelSpeed.placeholder')}
-                  value={params.scara?.travel_speed ?? ''}
+                  value={params.machine?.travel_speed ?? ''}
                   onChange={(e) => handleSpeed('travel_speed', e.target.value)}
                   disabled={disabled}
                   className="mt-1 block w-full rounded-md border border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm tabular-nums text-ci-text focus-ring"
@@ -517,7 +517,7 @@ export function ParameterPanel({
                   id="drawSpeed"
                   type="number"
                   placeholder={t('params.drawSpeed.placeholder')}
-                  value={params.scara?.draw_speed ?? ''}
+                  value={params.machine?.draw_speed ?? ''}
                   onChange={(e) => handleSpeed('draw_speed', e.target.value)}
                   disabled={disabled}
                   className="mt-1 block w-full rounded-md border border-ci-rule bg-ci-surface px-3 py-2 font-body text-sm tabular-nums text-ci-text focus-ring"

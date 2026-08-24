@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from pipeline.contours import contours
 from pipeline.edges import edges
 from pipeline.fuzzy_threshold import fuzzy_auto_threshold
@@ -22,7 +22,7 @@ class PipelineOrchestrator:
     def run(
         self,
         image: NDArray,
-        config: ScaraConfig,
+        config: MachineConfig,
         params: ConvertParams | None = None,
     ) -> PipelineOutput:
         """
@@ -33,7 +33,7 @@ class PipelineOrchestrator:
 
         Args:
             image: Input image as a NumPy ndarray.
-            config: SCARA machine configuration for pixel-to-millimeter scaling.
+            config: Machine configuration for pixel-to-millimeter scaling.
             params: Optional conversion parameters. When omitted, balanced defaults
                 are used.
 

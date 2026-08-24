@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from jobs.views import ConvertView, PublishGcodeView, HealthCheckView
+from jobs.views import ConvertView, HealthCheckView, PublishGcodeView
 
 urlpatterns = [
     path("convert", ConvertView.as_view(), name="convert"),

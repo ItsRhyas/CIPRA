@@ -5,9 +5,9 @@
   "description": "Request/response contract for POST /api/v1/convert/ between the Next.js frontend and the Django backend.",
   "version": "0.1.0",
   "$defs": {
-    "ScaraConfig": {
+    "MachineConfig": {
       "type": "object",
-      "description": "Physical SCARA machine configuration. Overrides are optional; defaults match an A4 drawing area.",
+      "description": "Physical machine configuration. Overrides are optional; defaults match an A4 drawing area.",
       "properties": {
         "work_area_w_mm": {
           "type": "number",
@@ -60,8 +60,8 @@
           "default": 1.0,
           "description": "Douglas-Peucker epsilon in millimeters."
         },
-        "scara": {
-          "$ref": "#/$defs/ScaraConfig"
+        "machine": {
+          "$ref": "#/$defs/MachineConfig"
         },
         "rotation_deg": {
           "type": "integer",

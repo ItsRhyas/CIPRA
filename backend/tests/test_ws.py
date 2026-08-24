@@ -1,8 +1,8 @@
 """WebSocket integration tests using channels' WebsocketCommunicator.
 
-Covers R18/S1-S4, consumer ACK + E_* rejection paths, and the PublishGcodeView
-re-publish API (R6/S5). Uses pytest-asyncio (asyncio_mode = auto) and the
-InMemory channel layer from settings.
+Covers consumer ACK + E_* rejection paths, and the PublishGcodeView re-publish
+API. Uses pytest-asyncio (asyncio_mode = auto) and the InMemory channel layer
+from settings.
 """
 
 from __future__ import annotations
@@ -153,7 +153,7 @@ class TestConsumerProtocol:
 
 
 # ---------------------------------------------------------------------------
-# Publish fan-out + late joiner (S4 / R18 / R7)
+# Publish fan-out + late joiner
 # ---------------------------------------------------------------------------
 
 
@@ -190,7 +190,7 @@ class TestPublishFanOut:
 
 
 # ---------------------------------------------------------------------------
-# PublishGcodeView re-publish API (R6 / S5)
+# PublishGcodeView re-publish API
 # ---------------------------------------------------------------------------
 
 
@@ -212,7 +212,7 @@ class TestPublishApi:
         assert r1.json()["job_id"] == env["id"]
         assert r2.status_code == 200
         assert r2.json()["job_id"] == env["id"]
-        # No connected client → publish is a no-op (R6/S5).
+        # No connected client → publish is a no-op.
         assert r2.json()["published"] is False
         assert r2.json()["connected"] is False
 

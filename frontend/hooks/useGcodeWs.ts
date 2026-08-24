@@ -13,7 +13,7 @@ import { publish as apiPublish, type PublishResult } from '@/lib/api';
  * Connection + publish hook for the webSocket `/ws/status/` presence channel.
  *
  * Exposes the connection status, the latest bombolab `clients` count, the most
- * recent `gcode.ack` id, and a `publish()` action (R6) that re-publishes the
+ * recent `gcode.ack` id, and a `publish()` action that re-publishes the
  * current snapshot. The client auto-reconnects with exponential backoff and is
  * torn down on unmount.
  */

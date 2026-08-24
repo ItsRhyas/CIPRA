@@ -18,7 +18,7 @@ from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
 from cipra_api.ws import protocol
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from gcode.formatter import format_gcode
 from jobs.latest import latest
 from jobs.serializers import ConvertRequestSerializer, ImageTooLarge
@@ -68,18 +68,18 @@ class ConvertView(APIView):
         params.variant = variant
 
         image_array = _load_image(image_file)
-        scara_config = params.scara if params.scara else ScaraConfig()
+        machine_config = params.machine if params.machine else MachineConfig()
 
         start = time.perf_counter()
         try:
-            pipeline_output = PipelineOrchestrator().run(image_array, scara_config, params)
+            pipeline_output = PipelineOrchestrator().run(image_array, machine_config, params)
             elapsed_ms = (time.perf_counter() - start) * 1000
 
             format_result = format_gcode(
                 pipeline_output.coordinates,
-                scara_config,
-                travel_speed=scara_config.travel_speed,
-                draw_speed=scara_config.draw_speed,
+                machine_config,
+                travel_speed=machine_config.travel_speed,
+                draw_speed=machine_config.draw_speed,
             )
         except Exception as exc:
             logger.exception("Pipeline failed for image %s", image_file.name)
@@ -92,7 +92,7 @@ class ConvertView(APIView):
                 payload=format_result.gcode,
             )
             # Store the latest snapshot, but do NOT fan out: publishing is
-            # deferred to the explicit publish endpoint (R6/S4 revision).
+            # deferred to the explicit publish endpoint.
             latest.set(envelope)
         else:
             logger.warning(
@@ -134,7 +134,7 @@ class PublishGcodeView(APIView):
 
     Idempotent: re-sends the same envelope (and returns its id) regardless of
     how many times it is called. When no subscriber is connected the re-publish
-    is a no-op (R6/S5).
+    is a no-op.
     """
 
     parser_classes = [JSONParser]

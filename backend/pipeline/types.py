@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 
 
 @dataclass
@@ -17,7 +17,7 @@ class ConvertParams:
     auto_threshold: bool = False
     simplify_tolerance: float = 1.0
     variant: str = "balanced"
-    scara: ScaraConfig | None = None
+    machine: MachineConfig | None = None
     rotation_deg: int = 0
     flip_h: bool = False
     flip_v: bool = False
