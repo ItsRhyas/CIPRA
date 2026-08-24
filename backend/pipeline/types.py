@@ -70,10 +70,10 @@ class StageImage:
     """A preview image captured from an intermediate pipeline stage."""
 
     id: str
+    label: str
     order: int
     mime: str
     png_base64: str
-    label: str | None = None
 
 
 

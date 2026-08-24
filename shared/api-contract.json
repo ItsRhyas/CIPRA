@@ -120,7 +120,7 @@
           "description": "PNG image encoded as a base64 string."
         }
       },
-      "required": ["id", "order", "mime", "png_base64"],
+      "required": ["id", "label", "order", "mime", "png_base64"],
       "additionalProperties": false
     },
     "ConvertResponseMeta": {
