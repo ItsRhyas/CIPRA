@@ -32,6 +32,8 @@ export const en: Dictionary = {
   'params.scale.tooltip': 'Scales the final drawing size. 1.0 keeps the original size.',
   'params.threshold': 'Threshold',
   'params.threshold.tooltip': 'Edge detection sensitivity. Lower values capture more detail.',
+  'params.autoThreshold': 'Auto threshold',
+  'params.autoThreshold.tooltip': 'Let the fuzzy controller pick the Canny threshold automatically.',
   'params.tolerance': 'Simplify tolerance',
   'params.tolerance.tooltip': 'Controls path detail. Higher values produce smoother but less detailed lines.',
   'params.variant': 'Variant',

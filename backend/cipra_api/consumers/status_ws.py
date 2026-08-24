@@ -12,6 +12,7 @@ from typing import Any
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from cipra_api.ws.protocol import SCHEMA_VERSION, T_PRESENCE
+from cipra_api.ws.security import validate_origin
 
 GROUP_NAME = "status"
 
@@ -20,6 +21,9 @@ class StatusConsumer(AsyncJsonWebsocketConsumer):
     """Presence broadcaster for the connected CIPRA UI client."""
 
     async def connect(self) -> None:
+        if not validate_origin(self.scope):
+            await self.close(code=4403)
+            return
         self.group_room = GROUP_NAME
         await self.channel_layer.group_add(self.group_room, self.channel_name)
         await self.accept()

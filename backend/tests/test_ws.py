@@ -1,8 +1,8 @@
 """WebSocket integration tests using channels' WebsocketCommunicator.
 
-Covers R18/S1-S4, consumer ACK + E_* rejection paths, and the PublishGcodeView
-re-publish API (R6/S5). Uses pytest-asyncio (asyncio_mode = auto) and the
-InMemory channel layer from settings.
+Covers consumer ACK + E_* rejection paths, and the PublishGcodeView re-publish
+API. Uses pytest-asyncio (asyncio_mode = auto) and the InMemory channel layer
+from settings.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 from channels.layers import get_channel_layer
 from channels.testing import WebsocketCommunicator
+from django.test import override_settings
 
 from cipra_api.asgi import application
 from cipra_api.ws.protocol import make_gcode_ready
@@ -152,7 +153,7 @@ class TestConsumerProtocol:
 
 
 # ---------------------------------------------------------------------------
-# Publish fan-out + late joiner (S4 / R18 / R7)
+# Publish fan-out + late joiner
 # ---------------------------------------------------------------------------
 
 
@@ -189,7 +190,7 @@ class TestPublishFanOut:
 
 
 # ---------------------------------------------------------------------------
-# PublishGcodeView re-publish API (R6 / S5)
+# PublishGcodeView re-publish API
 # ---------------------------------------------------------------------------
 
 
@@ -211,7 +212,7 @@ class TestPublishApi:
         assert r1.json()["job_id"] == env["id"]
         assert r2.status_code == 200
         assert r2.json()["job_id"] == env["id"]
-        # No connected client → publish is a no-op (R6/S5).
+        # No connected client → publish is a no-op.
         assert r2.json()["published"] is False
         assert r2.json()["connected"] is False
 
@@ -226,3 +227,55 @@ class TestPublishApi:
         assert resp.json()["job_id"] == env["id"]
         # Successful broadcast marks the snapshot as published for replay.
         assert latest.is_published() is True
+
+
+# ---------------------------------------------------------------------------
+# Origin validation + frame size limit (Phase 1 security)
+# ---------------------------------------------------------------------------
+
+
+class TestOriginValidation:
+    async def test_connect_rejects_evil_origin(self) -> None:
+        """A browser Origin outside ALLOWED_HOSTS is rejected with 4403."""
+        communicator = WebsocketCommunicator(
+            application,
+            "/ws/gcode/",
+            headers=[(b"origin", b"http://evil.example")],
+        )
+        connected, close_code = await communicator.connect()
+        assert connected is False
+        assert close_code == 4403
+
+    @override_settings(ALLOWED_HOSTS=["testserver"])
+    async def test_connect_allows_listed_origin(self) -> None:
+        """A browser Origin whose hostname is in ALLOWED_HOSTS connects."""
+        communicator = WebsocketCommunicator(
+            application,
+            "/ws/gcode/",
+            headers=[(b"origin", b"http://testserver")],
+        )
+        connected, _ = await communicator.connect()
+        assert connected is True
+        await communicator.disconnect()
+
+    async def test_connect_without_origin_allowed(self) -> None:
+        """Non-browser clients without an Origin header are accepted."""
+        communicator = WebsocketCommunicator(application, "/ws/gcode/")
+        connected, _ = await communicator.connect()
+        assert connected is True
+        await communicator.disconnect()
+
+
+class TestFrameSizeLimit:
+    async def test_oversized_frame_closes_connection(self) -> None:
+        """A text frame larger than 64 KB closes the socket with 1009."""
+        communicator = await _connect()
+        try:
+            await communicator.receive_json_from(timeout=1)  # drain replay
+            big = "x" * (70 * 1024)
+            await communicator.send_to(text_data=big)
+            message = await communicator.receive_output(timeout=1)
+            assert message["type"] == "websocket.close"
+            assert message.get("code") == 1009
+        finally:
+            await communicator.disconnect()

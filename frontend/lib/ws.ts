@@ -1,14 +1,14 @@
 /**
  * CIPRA WebSocket status client.
  *
- * Connects to the CIPRA-backend `/ws/status/` presence channel (F2-01) and
- * reconnects with exponential backoff. The status channel keeps the CIPRA UI's
+ * Connects to the CIPRA-backend `/ws/status/` presence channel and reconnects
+ * with exponential backoff. The status channel keeps the CIPRA UI's
  * connection/presence badge honest without ever counting as a bombolab
- * subscriber (design AD-1/AD-4).
+ * subscriber.
  *
  * Framework-free so it runs inside vitest's `node` environment with a stubbed
  * `WebSocket` test double (`lib/ws.test.ts`). The envelope shape and error
- * codes mirror the backend `cipra_api/ws/protocol.py` canonical contract (AD-2).
+ * codes mirror the backend `cipra_api/ws/protocol.py` canonical contract.
  */
 
 /** Presence channel path on the backend (single source of truth for the URL). */
@@ -28,7 +28,7 @@ const CANONICAL_TYPES: ReadonlySet<string> = new Set<string>([
 
 const SCHEMA_VERSION = 1;
 
-/** A validated transport envelope (canonical shape, R1). */
+/** A validated transport envelope (canonical shape). */
 export interface Envelope {
   type: string;
   version: number;

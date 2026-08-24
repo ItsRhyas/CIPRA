@@ -1,6 +1,6 @@
 # CIPRA G-Code Dialect
 
-CIPRA outputs plain-text, purely geometric G-Code. It intentionally avoids machine-specific inverse kinematics or vendor M-codes so the web backend stays decoupled from the SCARA hardware controller.
+CIPRA outputs plain-text, purely geometric G-Code. It intentionally avoids machine-specific inverse kinematics or vendor M-codes so the web backend stays decoupled from the robot hardware controller.
 
 ## Allowed command set
 

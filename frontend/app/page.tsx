@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { ConvertParams, Variant } from '@/lib/types';
-import { DEFAULTS } from '@/lib/scara-defaults';
+import { DEFAULTS } from '@/lib/machine-defaults';
 import { ImageType } from '@/lib/presets';
 import { useT } from '@/lib/i18n/useT';
 import { useConvert } from '@/hooks/useConvert';
@@ -265,8 +265,8 @@ export default function HomePage() {
                     <div role="tabpanel" id={panelId('viewer')} aria-labelledby={tabId('viewer')} tabIndex={0}>
                       <GCodeViewer
                         gcode={result?.gcode ?? null}
-                        workAreaW={params.scara?.work_area_w_mm}
-                        workAreaH={params.scara?.work_area_h_mm}
+                        workAreaW={params.machine?.work_area_w_mm}
+                        workAreaH={params.machine?.work_area_h_mm}
                         fallbackText={t('viewer.empty')}
                       />
                     </div>

@@ -32,6 +32,8 @@ export const es: Dictionary = {
   'params.scale.tooltip': 'Escala el tamaño final del dibujo. 1.0 mantiene el tamaño original.',
   'params.threshold': 'Umbral',
   'params.threshold.tooltip': 'Sensibilidad de detección de bordes. Valores bajos capturan más detalle.',
+  'params.autoThreshold': 'Umbral automático',
+  'params.autoThreshold.tooltip': 'Deja que el controlador difuso elija el umbral de Canny automáticamente.',
   'params.tolerance': 'Tolerancia de simplificación',
   'params.tolerance.tooltip': 'Controla el detalle de la trayectoria. Valores altos producen líneas más suaves.',
   'params.variant': 'Variante',

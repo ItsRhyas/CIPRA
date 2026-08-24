@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from pipeline.types import StageResult, Warning
 
 
 def simplify(
     contours: list[list[tuple[float, float]]],
-    config: ScaraConfig,
+    config: MachineConfig,
     tolerance: float = 2.0,
     image_shape: tuple[int, ...] = (0, 0),
     scale: float = 1.0,

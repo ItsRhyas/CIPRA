@@ -5,9 +5,9 @@
   "description": "Request/response contract for POST /api/v1/convert/ between the Next.js frontend and the Django backend.",
   "version": "0.1.0",
   "$defs": {
-    "ScaraConfig": {
+    "MachineConfig": {
       "type": "object",
-      "description": "Physical SCARA machine configuration. Overrides are optional; defaults match an A4 drawing area.",
+      "description": "Physical machine configuration. Overrides are optional; defaults match an A4 drawing area.",
       "properties": {
         "work_area_w_mm": {
           "type": "number",
@@ -47,7 +47,12 @@
           "minimum": 0,
           "maximum": 255,
           "default": 127,
-          "description": "Canny edge detection low threshold."
+          "description": "Canny edge detection low threshold. Ignored when auto_threshold is true."
+        },
+        "auto_threshold": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, a fuzzy logic controller (Mamdani inference over image contrast and edge density) selects the Canny low threshold automatically instead of using 'threshold'."
         },
         "simplify_tolerance": {
           "type": "number",
@@ -55,8 +60,8 @@
           "default": 1.0,
           "description": "Douglas-Peucker epsilon in millimeters."
         },
-        "scara": {
-          "$ref": "#/$defs/ScaraConfig"
+        "machine": {
+          "$ref": "#/$defs/MachineConfig"
         },
         "rotation_deg": {
           "type": "integer",
@@ -83,19 +88,52 @@
       "properties": {
         "variant": {
           "type": "string",
-          "enum": ["fast", "detailed"]
+          "enum": ["fast", "detailed", "balanced"]
         },
         "stages_run": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Pipeline stage names executed in order."
+          "description": "Pipeline stage names executed in order. Includes 'fuzzy' when auto_threshold was enabled."
         },
         "elapsed_ms": {
           "type": "number",
           "minimum": 0,
           "description": "Total processing time in milliseconds."
+        },
+        "fuzzy": {
+          "type": "object",
+          "description": "Fuzzy auto-threshold diagnostics. Present only when the request enabled auto_threshold.",
+          "properties": {
+            "inputs": {
+              "type": "object",
+              "description": "Crisp inputs fed to the fuzzy controller: contrast and edge_density (0-100)."
+            },
+            "memberships": {
+              "type": "object",
+              "description": "Fuzzified membership degrees per linguistic label for each input."
+            },
+            "fired_rules": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "Rules whose activation was positive, with their SI-ENTONCES text and activation degree."
+            },
+            "defuzzified": {
+              "type": "number",
+              "description": "Centroid of the aggregated output fuzzy set before rounding."
+            },
+            "threshold": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Final crisp Canny low threshold selected by the fuzzy controller."
+            }
+          },
+          "required": ["inputs", "memberships", "fired_rules", "defuzzified", "threshold"],
+          "additionalProperties": false
         }
       },
       "required": ["variant", "stages_run", "elapsed_ms"],
@@ -115,7 +153,7 @@
         },
         "variant": {
           "type": "string",
-          "enum": ["fast", "detailed"],
+          "enum": ["fast", "detailed", "balanced"],
           "default": "fast",
           "description": "Conversion quality preset."
         }

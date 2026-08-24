@@ -1,9 +1,9 @@
 /**
- * F2-04 — specs for the ConnectionBadge label mapping (extracted pure helper).
+ * Specs for the ConnectionBadge label mapping (extracted pure helper).
  *
  * The badge shows Spanish UI copy with a status role; the pure function below
  * maps each connection status to its label + a11y description without touching
- * DOM/Tailwind classes (AD-4 node environment, no jsdom).
+ * DOM/Tailwind classes (node environment, no jsdom).
  */
 
 import { describe, it, expect } from 'vitest';

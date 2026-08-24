@@ -71,14 +71,16 @@ def preprocess(
     else:
         gray = image
 
+    meta = {"grayscale": gray}
+
     if variant == "detailed":
         processed = cv2.bilateralFilter(gray, 9, 75, 75)
-        return StageResult(data=processed, warnings=[], stage_name="preprocess")
+        return StageResult(data=processed, warnings=[], stage_name="preprocess", meta=meta)
 
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
     if variant == "balanced":
         _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        return StageResult(data=binary, warnings=[], stage_name="preprocess")
+        return StageResult(data=binary, warnings=[], stage_name="preprocess", meta=meta)
 
-    return StageResult(data=blurred, warnings=[], stage_name="preprocess")
+    return StageResult(data=blurred, warnings=[], stage_name="preprocess", meta=meta)

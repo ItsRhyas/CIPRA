@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from pipeline.contours import contours
 from pipeline.edges import edges
+from pipeline.fuzzy_threshold import fuzzy_auto_threshold
 from pipeline.preprocess import preprocess
 from pipeline.simplify import simplify
 from pipeline.types import ConvertParams, PipelineOutput, StageResult, Warning
@@ -21,15 +22,18 @@ class PipelineOrchestrator:
     def run(
         self,
         image: NDArray,
-        config: ScaraConfig,
+        config: MachineConfig,
         params: ConvertParams | None = None,
     ) -> PipelineOutput:
         """
-        Run preprocess → edges → contours → simplify and return coordinates.
+        Run preprocess → [fuzzy] → edges → contours → simplify and return
+        coordinates. When ``params.auto_threshold`` is set, the ``fuzzy``
+        stage computes the Canny threshold from the preprocessed grayscale
+        image instead of using ``params.threshold``.
 
         Args:
             image: Input image as a NumPy ndarray.
-            config: SCARA machine configuration for pixel-to-millimeter scaling.
+            config: Machine configuration for pixel-to-millimeter scaling.
             params: Optional conversion parameters. When omitted, balanced defaults
                 are used.
 
@@ -52,7 +56,16 @@ class PipelineOrchestrator:
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "preprocess")
 
-        result = edges(result.data, params.threshold)
+        threshold = params.threshold
+        fuzzy_meta: dict | None = None
+        if params.auto_threshold:
+            gray = result.meta.get("grayscale", result.data)
+            fuzzy_result = fuzzy_auto_threshold(gray)
+            threshold = fuzzy_result.threshold
+            fuzzy_meta = fuzzy_result.diagnostics
+            stages_run.append("fuzzy")
+
+        result = edges(result.data, threshold)
         warnings.extend(result.warnings)
         stages_run.append(result.stage_name or "edges")
 
@@ -76,6 +89,7 @@ class PipelineOrchestrator:
             coordinates=coordinates,
             warnings=warnings,
             stages_run=stages_run,
+            fuzzy_meta=fuzzy_meta,
         )
 
 

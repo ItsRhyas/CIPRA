@@ -196,7 +196,7 @@ def test_convert_does_not_broadcast_and_stores_unpublished(
     convert_params,
     monkeypatch,
 ):
-    """S4/R7 revision: converting an image must NOT fan out to subscribers.
+    """Converting an image must NOT fan out to subscribers.
 
     Convert only stores the latest snapshot (unpublished). The publish
     endpoint — not the convert — is the sole fan-out trigger. We prove this by
@@ -249,3 +249,131 @@ def test_convert_invalid_rotation_deg_returns_400(api_client, sample_image_bytes
 
     assert response.status_code == 400
     assert "rotation_deg" in str(response.json()).lower()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "params",
+    [
+        json.dumps({"machine": 5}),
+        json.dumps({"threshold": "abc"}),
+        json.dumps({"simplify_tolerance": -5}),
+        json.dumps({"scale": float("nan")}),
+        json.dumps({"flip_h": "true"}),
+        json.dumps({"machine": {"work_area_w_mm": 0}}),
+        json.dumps({"scale": 0}),
+    ],
+)
+def test_convert_invalid_params_return_400(api_client, sample_image_bytes, params):
+    """Invalid params values return 400 (never 500)."""
+    response = api_client.post(
+        "/api/v1/convert/",
+        {"image": _image_file(sample_image_bytes), "params": params, "variant": "fast"},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_convert_too_many_pixels_returns_413(
+    api_client,
+    sample_image_bytes,
+    convert_params,
+    monkeypatch,
+):
+    """Images above the pixel cap return 413, not a 500."""
+    from jobs import views
+
+    monkeypatch.setattr(views, "MAX_IMAGE_PIXELS", 100)
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 413
+
+
+@pytest.mark.django_db
+def test_convert_gcode_never_contains_nan(api_client, sample_image_bytes, convert_params):
+    """The generated G-Code must never contain a 'nan' literal."""
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    assert "nan" not in response.json()["gcode"].lower()
+
+
+@pytest.mark.django_db
+def test_convert_auto_threshold_returns_fuzzy_meta(api_client, sample_image_bytes):
+    """auto_threshold=true runs the fuzzy stage and returns meta.fuzzy."""
+    params = json.dumps({"threshold": 127, "auto_threshold": True})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "fuzzy" in data["meta"]
+    fuzzy = data["meta"]["fuzzy"]
+    assert "inputs" in fuzzy
+    assert "memberships" in fuzzy
+    assert "fired_rules" in fuzzy
+    assert "defuzzified" in fuzzy
+    assert "threshold" in fuzzy
+    assert 0 <= fuzzy["threshold"] <= 255
+    assert "fuzzy" in data["meta"]["stages_run"]
+
+
+@pytest.mark.django_db
+def test_convert_default_omits_fuzzy_meta(api_client, sample_image_bytes, convert_params):
+    """Without auto_threshold the response has no fuzzy diagnostics."""
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "fuzzy" not in data["meta"]
+    assert "fuzzy" not in data["meta"]["stages_run"]
+
+
+@pytest.mark.django_db
+def test_convert_invalid_auto_threshold_returns_400(api_client, sample_image_bytes):
+    """auto_threshold must be a boolean."""
+    params = json.dumps({"auto_threshold": "yes"})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 400

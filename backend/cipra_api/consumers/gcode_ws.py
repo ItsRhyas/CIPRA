@@ -15,6 +15,7 @@ from typing import Any
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from cipra_api.ws import protocol
+from cipra_api.ws.security import validate_origin
 from jobs.latest import latest, subscribers
 
 GROUP_NAME = "gcode"
@@ -23,12 +24,22 @@ GROUP_NAME = "gcode"
 class GcodeConsumer(AsyncJsonWebsocketConsumer):
     """Subscriber-facing consumer that replays and fans out the current job."""
 
+    MAX_FRAME_BYTES = 64 * 1024  # 64 KB
+
     async def connect(self) -> None:
+        if not validate_origin(self.scope):
+            await self.close(code=4403)
+            return
         self.group_room = GROUP_NAME
         await self.channel_layer.group_add(self.group_room, self.channel_name)
         await self.accept()
         subscribers.increment()
-        await self._replay_snapshot()
+        try:
+            await self._replay_snapshot()
+        except Exception:
+            # connect() fallará y channels no llamará a disconnect(): compensa.
+            subscribers.decrement()
+            raise
 
     async def _replay_snapshot(self) -> None:
         if latest.is_published():
@@ -37,12 +48,22 @@ class GcodeConsumer(AsyncJsonWebsocketConsumer):
             # Pending-but-unpublished job (or none at all): behave as today.
             await self.send_json(protocol.build_nojob())
 
+    async def receive(
+        self, text_data: str | None = None, bytes_data: bytes | None = None, **kwargs: Any
+    ) -> None:
+        if text_data is not None and len(text_data.encode("utf-8")) > self.MAX_FRAME_BYTES:
+            await self.close(code=1009)  # message too big
+            return
+        await super().receive(text_data=text_data, bytes_data=bytes_data, **kwargs)
+
     async def receive_json(self, content: dict[str, Any], **kwargs: Any) -> None:
         """Validate incoming envelopes; ACKs do not break the live channel.
 
         Unsupported versions are rejected (not queued) per R2 — we simply do
         not fan them out and leave the socket usable.
         """
+        if not isinstance(content, dict):
+            return
         valid, error_code = protocol.validate_envelope(content)
         if not valid:
             # Reject (do not queue) but keep the socket open.

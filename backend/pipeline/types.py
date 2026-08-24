@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 
 
 @dataclass
@@ -14,9 +14,10 @@ class ConvertParams:
 
     scale: float = 1.0
     threshold: int = 127
+    auto_threshold: bool = False
     simplify_tolerance: float = 1.0
     variant: str = "balanced"
-    scara: ScaraConfig | None = None
+    machine: MachineConfig | None = None
     rotation_deg: int = 0
     flip_h: bool = False
     flip_v: bool = False
@@ -78,6 +79,7 @@ class StageResult:
     data: Any
     warnings: list[Warning] = field(default_factory=list)
     stage_name: str = ""
+    meta: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -92,4 +94,5 @@ class PipelineOutput:
     coordinates: list[list[tuple[float, float]]] = field(default_factory=list)
     warnings: list[Warning] = field(default_factory=list)
     stages_run: list[str] = field(default_factory=list)
+    fuzzy_meta: dict | None = None
 

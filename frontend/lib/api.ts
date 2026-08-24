@@ -22,7 +22,7 @@ export class ApiError extends Error {
  *
  * The wire format matches the backend's multipart parser exactly:
  * - image:  the file field
- * - params: JSON string with { scale, threshold, simplify_tolerance, scara? }
+ * - params: JSON string with { scale, threshold, simplify_tolerance, machine? }
  * - variant: "fast" | "detailed" | "balanced"
  */
 export async function convert(
@@ -75,7 +75,7 @@ export interface PublishResult {
 }
 
 /**
- * Re-publish the current snapshot (R6). Pure HTTP — the CIPRA frontend never
+ * Re-publish the current snapshot. Pure HTTP — the CIPRA frontend never
  * publishes over WebSocket (the backend stays the source of truth).
  *
  * A non-2xx response (e.g. 404 with `E_NO_JOB`, or any other 4xx/5xx) raises

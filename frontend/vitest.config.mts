@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * CIPRA frontend test config (AD-4).
+ * CIPRA frontend test config.
  *
  * Plain vitest without the next-vitest plugin. `environment: 'node'` keeps the
  * setup framework-free: tests only exercise pure modules (`lib/ws.ts`,

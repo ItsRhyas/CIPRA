@@ -5,7 +5,7 @@ import type { ConnectionStatus } from '@/lib/ws';
 
 /**
  * Badge presentation for a connection status: Spanish UI copy plus an
- * accessibility description (design AD-4 — always a banner, never a modal).
+ * accessibility description.
  */
 export interface BadgePresentation {
   label: string;
@@ -38,7 +38,7 @@ const BADGE_PRESENTATIONS: Record<ConnectionStatus, BadgePresentation> = {
 
 /**
  * Pure status -> label/description mapping, kept separate so it can be unit
- * tested without a DOM (AD-4). Capitalized label + status role imply meaning.
+ * tested without a DOM. Capitalized label + status role imply meaning.
  */
 export function getBadgePresentation(
   status: ConnectionStatus

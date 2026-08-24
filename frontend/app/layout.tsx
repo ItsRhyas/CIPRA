@@ -25,7 +25,7 @@ const monoFont = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'CIPRA — Pixel to Path',
-  description: 'Convert images into G-Code for your SCARA robotic arm.',
+  description: 'Convert images into G-Code for your robotic arm.',
 };
 
 export default function RootLayout({

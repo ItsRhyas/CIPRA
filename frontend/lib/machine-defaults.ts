@@ -1,4 +1,4 @@
-import { ConvertParams, Variant } from '@/lib/types';
+import { ConvertParams, MachineConfig, Variant } from '@/lib/types';
 
 /**
  * Default conversion parameters for the CIPRA frontend.
@@ -10,7 +10,7 @@ export const DEFAULTS: ConvertParams & { variant: Variant } = {
   threshold: 128,
   simplify_tolerance: 1.0,
   variant: 'balanced',
-  scara: {
+  machine: {
     work_area_w_mm: 210,
     work_area_h_mm: 297,
     travel_speed: undefined,

@@ -1,10 +1,10 @@
 /**
- * F2-03 — RED/GREEN specs for `buildStatusWsUrl` (pure URL helper used by the
- * `useGcodeWs` hook to reach the CIPRA `/ws/status/` presence channel).
+ * Specs for `buildStatusWsUrl` (pure URL helper used by the `useGcodeWs` hook
+ * to reach the CIPRA `/ws/status/` presence channel).
  *
- * The helper mirrors the design: the WS scheme derives from the page protocol
- * (`http:` -> `ws:`, `https:` -> `wss:`) with a localhost fallback outside a
- * browser. Pure function — no DOM required (AD-4 node environment).
+ * The helper derives the WS scheme from the page protocol (`http:` -> `ws:`,
+ * `https:` -> `wss:`) with a localhost fallback outside a browser. Pure
+ * function — no DOM required (node environment).
  */
 
 import { describe, it, expect } from 'vitest';

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 
 
 @dataclass
@@ -44,7 +44,7 @@ def _clamp(
 
 def format_gcode(
     paths: list[list[tuple[float, float]]],
-    config: ScaraConfig | None = None,
+    config: MachineConfig | None = None,
     travel_speed: Optional[float] = None,
     draw_speed: Optional[float] = None,
 ) -> FormatResult:
@@ -57,7 +57,7 @@ def format_gcode(
     when the corresponding speed is provided, preserving backward compatibility
     with callers that rely on externally configured feed rates.
     """
-    config = config or ScaraConfig()
+    config = config or MachineConfig()
     warnings: list[str] = []
     lines: list[str] = []
 

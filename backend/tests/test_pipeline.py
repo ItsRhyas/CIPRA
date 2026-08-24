@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from gcode.config import ScaraConfig
+from gcode.config import MachineConfig
 from pipeline.contours import contours
 from pipeline.edges import edges
 from pipeline.orchestrator import PipelineOrchestrator, _extract_coordinates
@@ -21,9 +21,9 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def default_config() -> ScaraConfig:
-    """Return the default SCARA configuration."""
-    return ScaraConfig()
+def default_config() -> MachineConfig:
+    """Return the default machine configuration."""
+    return MachineConfig()
 
 
 def test_preprocess_returns_stage_result_with_ndarray(synthetic_image: NDArray) -> None:
@@ -64,7 +64,7 @@ def test_contours_returns_filtered_paths(synthetic_image: NDArray) -> None:
 
 
 def test_simplify_returns_stage_result_with_coordinates(
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """simplify returns a StageResult whose data is a list of coordinate paths."""
     result = simplify([[(0.0, 0.0), (10.0, 10.0)]], default_config, image_shape=(100, 100))
@@ -83,7 +83,7 @@ def test_simplify_returns_stage_result_with_coordinates(
 
 def test_orchestrator_returns_pipeline_output(
     synthetic_image: NDArray,
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """The orchestrator chains stages and returns a PipelineOutput."""
     orchestrator = PipelineOrchestrator()
@@ -104,7 +104,7 @@ def test_orchestrator_returns_pipeline_output(
 
 def test_orchestrator_emits_no_stub_warnings(
     synthetic_image: NDArray,
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """The orchestrator no longer emits stub warnings for real stages."""
     orchestrator = PipelineOrchestrator()
@@ -141,7 +141,7 @@ def test_contours_find_rectangle_and_line(synthetic_image: NDArray) -> None:
         assert len(path) >= 4
 
 
-def test_dp_simplification_reduces_vertices(default_config: ScaraConfig) -> None:
+def test_dp_simplification_reduces_vertices(default_config: MachineConfig) -> None:
     """Douglas-Peucker collapses collinear points into fewer vertices."""
     dense_line = [(float(x), 0.0) for x in range(101)]
     result = simplify([dense_line], default_config, tolerance=1.0, image_shape=(200, 200))
@@ -151,7 +151,7 @@ def test_dp_simplification_reduces_vertices(default_config: ScaraConfig) -> None
     assert len(first_path) <= 4
 
 
-def test_px_to_mm_scaling(default_config: ScaraConfig) -> None:
+def test_px_to_mm_scaling(default_config: MachineConfig) -> None:
     """Pixel coordinates scale linearly to the configured work area."""
     result = simplify(
         [[(100.0, 100.0)]], default_config, tolerance=2.0, image_shape=(200, 200)
@@ -163,7 +163,7 @@ def test_px_to_mm_scaling(default_config: ScaraConfig) -> None:
     assert y_mm == pytest.approx(148.5)
 
 
-def test_y_flip_uses_bottom_left_origin(default_config: ScaraConfig) -> None:
+def test_y_flip_uses_bottom_left_origin(default_config: MachineConfig) -> None:
     """The Y axis is flipped and the image is centered in the work area."""
     top_left = simplify([[(0.0, 0.0)]], default_config, tolerance=2.0, image_shape=(200, 200))
     bottom_left = simplify(
@@ -175,7 +175,7 @@ def test_y_flip_uses_bottom_left_origin(default_config: ScaraConfig) -> None:
     assert bottom_left.data[0][0] == pytest.approx((0.0, 43.5))
 
 
-def test_simplify_preserves_aspect_ratio(default_config: ScaraConfig) -> None:
+def test_simplify_preserves_aspect_ratio(default_config: MachineConfig) -> None:
     """Non-square images are uniformly scaled and centered in the work area."""
     # Portrait 100x200 on A4 portrait: width is the constraining dimension,
     # producing side letterbox (offset_x_mm > 0).
@@ -192,7 +192,7 @@ def test_simplify_preserves_aspect_ratio(default_config: ScaraConfig) -> None:
     assert min(xs) > 0.0
 
 
-def test_tsp_ordering_is_deterministic(default_config: ScaraConfig) -> None:
+def test_tsp_ordering_is_deterministic(default_config: MachineConfig) -> None:
     """Nearest-neighbor path ordering produces the same result on every run."""
     path_a = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]
     path_b = [(100.0, 100.0), (110.0, 100.0), (110.0, 110.0), (100.0, 110.0)]
@@ -215,7 +215,7 @@ def test_blank_image_yields_no_contours() -> None:
 
 
 def test_blank_image_orchestrator_returns_empty_coordinates(
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """A fully white image produces empty coordinates and a no-contours warning."""
     blank = np.full((100, 100, 3), 255, dtype=np.uint8)
@@ -251,7 +251,7 @@ def test_edges_uses_provided_threshold() -> None:
 
 
 def test_simplify_scale_doubles_output_coordinates(
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """Scale multiplies millimeter coordinates."""
     base = simplify(
@@ -269,7 +269,7 @@ def test_simplify_scale_doubles_output_coordinates(
 
 def test_orchestrator_wires_scale(
     synthetic_image: NDArray,
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """The orchestrator passes scale into the pipeline."""
     orchestrator = PipelineOrchestrator()
@@ -291,7 +291,7 @@ def test_orchestrator_wires_scale(
 
 def test_orchestrator_wires_threshold(
     synthetic_image: NDArray,
-    default_config: ScaraConfig,
+    default_config: MachineConfig,
 ) -> None:
     """The orchestrator passes threshold into the edges stage."""
     orchestrator = PipelineOrchestrator()
@@ -359,7 +359,7 @@ def test_contours_graceful_when_opencv_missing() -> None:
     assert result.data == []
 
 
-def test_simplify_graceful_when_opencv_missing(default_config: ScaraConfig) -> None:
+def test_simplify_graceful_when_opencv_missing(default_config: MachineConfig) -> None:
     """simplify returns a warning instead of crashing when OpenCV is unavailable."""
     real_cv2 = sys.modules.get("cv2")
     sys.modules["cv2"] = None  # type: ignore[assignment]
