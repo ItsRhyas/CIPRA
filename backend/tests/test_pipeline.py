@@ -175,6 +175,27 @@ def test_y_flip_uses_bottom_left_origin(default_config: MachineConfig) -> None:
     assert bottom_left.data[0][0] == pytest.approx((0.0, 43.5))
 
 
+def test_mm_paths_to_pixel_polylines_flips_y() -> None:
+    """mm→pixel render re-flips the bottom-left mm origin back to top-left pixels."""
+    from pipeline.orchestrator import _mm_paths_to_pixel_polylines
+
+    # y_mm=0 is the bottom of the work area and must land at the bottom pixel row.
+    polylines = _mm_paths_to_pixel_polylines(
+        [[(0.0, 0.0), (10.0, 0.0)]], scale=2.0, canvas_height=100
+    )
+    points = polylines[0].reshape(-1, 2).tolist()
+    assert points[0] == [0, 100]
+    assert points[1] == [20, 100]
+
+    # y_mm=50 (halfway up a 100px canvas) must land at the top pixel row.
+    polylines = _mm_paths_to_pixel_polylines(
+        [[(0.0, 50.0), (10.0, 50.0)]], scale=2.0, canvas_height=100
+    )
+    points = polylines[0].reshape(-1, 2).tolist()
+    assert points[0] == [0, 0]
+    assert points[1] == [20, 0]
+
+
 def test_simplify_preserves_aspect_ratio(default_config: MachineConfig) -> None:
     """Non-square images are uniformly scaled and centered in the work area."""
     # Portrait 100x200 on A4 portrait: width is the constraining dimension,

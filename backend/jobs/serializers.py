@@ -107,6 +107,10 @@ class ConvertRequestSerializer(serializers.Serializer):
         if not isinstance(auto_threshold, bool):
             raise serializers.ValidationError("auto_threshold must be a boolean.")
 
+        include_stage_images = data.get("include_stage_images", False)
+        if not isinstance(include_stage_images, bool):
+            raise serializers.ValidationError("include_stage_images must be a boolean.")
+
         scale = self._finite_float(data.get("scale", 1.0), "scale", min_value=0.01)
         simplify_tolerance = self._finite_float(
             data.get("simplify_tolerance", 1.0),
@@ -193,6 +197,7 @@ class ConvertRequestSerializer(serializers.Serializer):
             rotation_deg=rotation_deg,
             flip_h=flip_h,
             flip_v=flip_v,
+            include_stage_images=include_stage_images,
         )
 
     def validate_variant(self, value: str) -> str:

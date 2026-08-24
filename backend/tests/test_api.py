@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from unittest.mock import patch
 
+import cv2
+import numpy as np
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -377,3 +380,143 @@ def test_convert_invalid_auto_threshold_returns_400(api_client, sample_image_byt
     )
 
     assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_convert_include_stage_images_returns_ordered_pngs(api_client, sample_image_bytes):
+    """include_stage_images=true returns 4 ordered, decodable PNG previews."""
+    params = json.dumps({"include_stage_images": True})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    stage_images = data["meta"]["stage_images"]
+    assert [stage["id"] for stage in stage_images] == [
+        "preprocess",
+        "edges",
+        "contours",
+        "simplify",
+    ]
+    for index, stage in enumerate(stage_images):
+        assert stage["order"] == index
+        assert stage["mime"] == "image/png"
+        assert stage["label"], f"stage {stage['id']} must carry a human label"
+        png_bytes = base64.b64decode(stage["png_base64"])
+        decoded = cv2.imdecode(
+            np.frombuffer(png_bytes, dtype=np.uint8),
+            cv2.IMREAD_UNCHANGED,
+        )
+        assert decoded is not None
+        if index in (0, 1):
+            # preprocess/edges are directly-encoded single-channel bitmaps.
+            assert decoded.ndim == 2
+        else:
+            # contours/simplify are rendered onto a white 3-channel canvas.
+            assert decoded.ndim == 3
+            assert decoded.shape[2] == 3
+            assert np.any(np.all(decoded == 255, axis=2))
+            assert not np.all(np.all(decoded == 255, axis=2))
+
+
+@pytest.mark.django_db
+def test_convert_omit_stage_images_omits_key(api_client, sample_image_bytes, convert_params):
+    """When include_stage_images is absent, meta has no stage_images key."""
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": convert_params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    assert "stage_images" not in response.json()["meta"]
+
+
+@pytest.mark.django_db
+def test_convert_false_stage_images_omits_key(api_client, sample_image_bytes):
+    """When include_stage_images=false, meta has no stage_images key."""
+    params = json.dumps({"include_stage_images": False})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    assert "stage_images" not in response.json()["meta"]
+
+
+@pytest.mark.django_db
+def test_convert_stage_images_excludes_fuzzy(api_client, sample_image_bytes):
+    """fuzzy appears in stages_run but never in stage_images."""
+    params = json.dumps({"include_stage_images": True, "auto_threshold": True})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "fuzzy" in data["meta"]["stages_run"]
+    stage_ids = [stage["id"] for stage in data["meta"]["stage_images"]]
+    assert "fuzzy" not in stage_ids
+
+
+@pytest.mark.django_db
+def test_convert_invalid_include_stage_images_returns_400(api_client, sample_image_bytes):
+    """include_stage_images must be a boolean."""
+    params = json.dumps({"include_stage_images": "yes"})
+    response = api_client.post(
+        "/api/v1/convert/",
+        {
+            "image": _image_file(sample_image_bytes),
+            "params": params,
+            "variant": "fast",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+
+
+def test_contract_types_regeneration_is_idempotent() -> None:
+    """The committed types.py exactly matches what the generator produces."""
+    import importlib.util
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[2]
+    script = repo_root / "scripts" / "generate-contract-types.py"
+    spec = importlib.util.spec_from_file_location("generate_contract_types", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    schema = json.loads(
+        (repo_root / "shared" / "api-contract.json").read_text(encoding="utf-8")
+    )
+    generated = module.generate(schema)
+    committed = (repo_root / "backend" / "pipeline" / "types.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert generated == committed

@@ -44,15 +44,18 @@ class StageResult:
     data: Any
     warnings: list[Warning] = field(default_factory=list)
     stage_name: str = ""
+    meta: dict = field(default_factory=dict)
 
 
 @dataclass
 class PipelineOutput:
     """Final aggregated output of the vision pipeline."""
 
-    coordinates: list[tuple[float, float]] = field(default_factory=list)
+    coordinates: list[list[tuple[float, float]]] = field(default_factory=list)
     warnings: list[Warning] = field(default_factory=list)
     stages_run: list[str] = field(default_factory=list)
+    fuzzy_meta: dict | None = None
+    stage_images: list[StageImage] = field(default_factory=list)
 '''
 
 
